@@ -1,0 +1,5 @@
+*.bin
+*.exe
+*.dll
+_skip_
+examples
