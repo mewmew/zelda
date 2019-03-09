@@ -7,7 +7,9 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"strings"
 
+	"github.com/mewkiz/pkg/pathutil"
 	"github.com/mewmew/pe"
 	"github.com/pkg/errors"
 )
@@ -30,6 +32,8 @@ func relink(pePath string) error {
 	}
 	// Parse sections.
 	sects := parseSects(file)
+	// Parse imported libraries.
+	libs := parseImports(file)
 	// Output ELF file header.
 	out := &bytes.Buffer{}
 	if err := dumpFileHdr(out); err != nil {
@@ -47,14 +51,6 @@ func relink(pePath string) error {
 		return errors.WithStack(err)
 	}
 	// .dynamic
-	// TODO: determine imported libs from parsed PE file.
-	libs := []Library{
-		{
-			Name:     "libc",
-			Filename: "libc.so.6",
-			Funcs:    []string{"printf", "exit"},
-		},
-	}
 	if err := dumpDynamicSect(out, libs); err != nil {
 		return errors.WithStack(err)
 	}
@@ -124,4 +120,27 @@ func elfProgHdrs(sects []*Section) []ProgHeader {
 	return progHdrs
 }
 
-// TODO: parse imports.
+// parseImports parses the imported libraries of the given PE file into a
+// unified format.
+func parseImports(file *pe.File) []Library {
+	var libs []Library
+	for _, imp := range file.Imps {
+		baseName := pathutil.TrimExt(strings.ToLower(imp.ImpDir.Name))
+		filename := baseName + ".so"
+		lib := Library{
+			Name:     baseName,
+			Filename: filename,
+		}
+		for _, iat := range imp.IATs {
+			var funcName string
+			if iat.IsOrdinal {
+				funcName = fmt.Sprintf("ordinal_%d", iat.Ordinal)
+			} else {
+				funcName = iat.NameEntry.Name
+			}
+			lib.Funcs = append(lib.Funcs, funcName)
+		}
+		libs = append(libs, lib)
+	}
+	return libs
+}
