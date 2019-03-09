@@ -1,0 +1,48 @@
+; --- [ .dynamic section ] -----------------------------------------------------
+
+; Dynamic tags.
+DT_NULL   equ 0  ; Terminating entry.
+DT_NEEDED equ 1  ; String table offset of a needed shared library.
+DT_PLTGOT equ 3  ; Processor-dependent address.
+DT_STRTAB equ 5  ; Address of string table.
+DT_SYMTAB equ 6  ; Address of symbol table.
+DT_JMPREL equ 23 ; Address of PLT relocations.
+
+dynamic_off equ dynamic - $$
+
+dynamic:
+
+  .strtab:
+	dd      DT_STRTAB	; tag: Entry type.
+	dd      dynstr	; val: Integer/Address value.
+
+.entsize equ $ - dynamic
+
+  .symtab:
+	dd      DT_SYMTAB	; tag: Entry type.
+	dd      dynsym	; val: Integer/Address value.
+
+  .jmprel:
+	dd      DT_JMPREL	; tag: Entry type.
+	dd      rel_plt	; val: Integer/Address value.
+
+  .pltgot:
+	dd      DT_PLTGOT	; tag: Entry type.
+	dd      got_plt	; val: Integer/Address value.
+
+{{- range .libs }}
+
+  .{{ . }}:
+	dd      DT_NEEDED	; tag: Entry type.
+	dd      dynstr.{{ . }}_off	; val: Integer/Address value.
+
+{{- end }}
+
+  .null:
+	dd      DT_NULL	; tag: Entry type.
+	dd      0	; val: Integer/Address value.
+
+.size equ $ - dynamic
+
+; --- [/ .dynamic section ] ----------------------------------------------------
+

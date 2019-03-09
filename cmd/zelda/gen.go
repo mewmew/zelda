@@ -124,6 +124,34 @@ func dumpInterpSect(w io.Writer) error {
 	return nil
 }
 
+// --- [ .dynamic section ] ----------------------------------------------------
+
+// dumpDynamicSect outputs the .dynamic section in NASM syntax based on the
+// given imported libraries, writing to w.
+func dumpDynamicSect(w io.Writer, libs []string) error {
+	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	const tmplName = "dynamic.tmpl"
+	tmplPath := filepath.Join(srcDir, tmplName)
+	t, err := template.New(tmplName).ParseFiles(tmplPath)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
+	data := map[string][]string{
+		"libs": libs,
+	}
+	if err := t.Execute(tw, data); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := tw.Flush(); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
 // ### [ Helper functions ] ####################################################
 
 // h2 returns a h2 heading as an 80-column NASM comment.

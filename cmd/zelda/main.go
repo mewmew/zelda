@@ -43,6 +43,12 @@ func relink(pePath string) error {
 	if err := dumpInterpSect(out); err != nil {
 		return errors.WithStack(err)
 	}
+	// .dynamic
+	// TODO: determine imported libs from parsed PE file.
+	libs := []string{"libc"}
+	if err := dumpDynamicSect(out, libs); err != nil {
+		return errors.WithStack(err)
+	}
 	fmt.Println(out.String())
 	return nil
 }
