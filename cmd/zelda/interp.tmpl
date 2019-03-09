@@ -1,0 +1,11 @@
+; --- [ .interp section ] ------------------------------------------------------
+
+interp_off equ interp - BASE_RODATA
+
+interp:
+
+	db      "/lib/ld-linux.so.2", 0
+
+.size equ $ - interp
+
+; --- [/ .interp section ] -----------------------------------------------------

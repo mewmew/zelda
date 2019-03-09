@@ -38,6 +38,11 @@ func relink(pePath string) error {
 	if err := dumpProgHdrs(out, sects); err != nil {
 		return errors.WithStack(err)
 	}
+	// Output sections.
+	// .interp
+	if err := dumpInterpSect(out); err != nil {
+		return errors.WithStack(err)
+	}
 	fmt.Println(out.String())
 	return nil
 }
