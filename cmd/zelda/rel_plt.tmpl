@@ -1,0 +1,23 @@
+; --- [ .rel.plt section ] -----------------------------------------------------
+
+; Relocation types.
+R_386_JMP_SLOT equ 7 ; Set GOT entry to code address.
+
+rel_plt:
+{{ range . }}
+; .{{ .Filename }}
+	{{- range .Funcs }}
+  .{{ . }}:
+	dd      got_plt.{{ . }}	; offset: Location to be relocated.
+	dd      R_386_JMP_SLOT | dynsym.{{ . }}_idx<<8	; info: Relocation type and symbol index.
+	{{- end }}
+{{ end }}
+
+{{- range . }}
+; {{ .Filename }}
+	{{- range .Funcs }}
+.{{ . }}_off	equ .{{ . }} - rel_plt
+	{{- end }}
+{{ end }}
+; --- [/ .rel.plt section ] ----------------------------------------------------
+

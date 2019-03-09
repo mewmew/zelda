@@ -62,6 +62,10 @@ func relink(pePath string) error {
 	if err := dumpDynsymSect(out, libs); err != nil {
 		return errors.WithStack(err)
 	}
+	// .rel.plt
+	if err := dumpRelPltSect(out, libs); err != nil {
+		return errors.WithStack(err)
+	}
 	fmt.Println(out.String())
 	return nil
 }

@@ -176,6 +176,29 @@ func dumpDynsymSect(w io.Writer, libs []Library) error {
 	return nil
 }
 
+// dumpRelPltSect outputs the .rel.plt section in NASM syntax based on the given
+// imported libraries, writing to w.
+func dumpRelPltSect(w io.Writer, libs []Library) error {
+	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	const tmplName = "rel_plt.tmpl"
+	tmplPath := filepath.Join(srcDir, tmplName)
+	t, err := template.New(tmplName).ParseFiles(tmplPath)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
+	if err := t.Execute(tw, libs); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := tw.Flush(); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
 // ### [ Helper functions ] ####################################################
 
 // h2 returns a h2 heading as an 80-column NASM comment.
