@@ -5,3 +5,4 @@ _skip_
 examples
 *.jpg
 *.png
+*.txt
