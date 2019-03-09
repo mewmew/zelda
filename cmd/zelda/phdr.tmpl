@@ -16,17 +16,17 @@ phdr:
 
 {{- range $i, $v := . }}
 
-{{ h2 .title }}
+{{ h2 .Title }}
 
-  .{{ .name }}:
-	dd      {{ .type }}	; type: Segment type
-	dd      {{ .name }}_off	; offset: Segment file offset
-	dd      {{ .name }}	; vaddr: Segment virtual address
-	dd      {{ .name }}	; paddr: Segment physical address
-	dd      {{ .name }}.size	; filesz: Segment size in file
-	dd      {{ .name }}.size	; memsz: Segment size in memory
-	dd      {{ .flags }}	; flags: Segment flags
-	dd      {{ .align }}	; align: Segment alignment
+  .{{ .Name }}:
+	dd      {{ .Type }}	; type: Segment type
+	dd      {{ .Name }}_off	; offset: Segment file offset
+	dd      {{ .Name }}	; vaddr: Segment virtual address
+	dd      {{ .Name }}	; paddr: Segment physical address
+	dd      {{ .Name }}.size	; filesz: Segment size in file
+	dd      {{ .Name }}.size	; memsz: Segment size in memory
+	dd      {{ .Flags }}	; flags: Segment flags
+	dd      {{ .Align }}	; align: Segment alignment
 
 {{- if eq $i 0 }}
 

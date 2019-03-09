@@ -3,6 +3,7 @@ package main
 
 import (
 	"bytes"
+	"debug/elf"
 	"flag"
 	"fmt"
 	"log"
@@ -34,8 +35,10 @@ func relink(pePath string) error {
 	if err := dumpFileHdr(out); err != nil {
 		return errors.WithStack(err)
 	}
+	// Get ELF program headers for the sections.
+	progHdrs := elfProgHdrs(sects)
 	// Output ELF program headers.
-	if err := dumpProgHdrs(out, sects); err != nil {
+	if err := dumpProgHdrs(out, progHdrs); err != nil {
 		return errors.WithStack(err)
 	}
 	// Output sections.
@@ -45,7 +48,13 @@ func relink(pePath string) error {
 	}
 	// .dynamic
 	// TODO: determine imported libs from parsed PE file.
-	libs := []string{"libc"}
+	libs := []Library{
+		{
+			Name:     "libc",
+			Filename: "libc.so.6",
+			Funcs:    []string{"printf", "exit"},
+		},
+	}
 	if err := dumpDynamicSect(out, libs); err != nil {
 		return errors.WithStack(err)
 	}
@@ -71,3 +80,44 @@ func parseSects(file *pe.File) []*Section {
 	}
 	return sects
 }
+
+// elfProgHdrs returns the ELF program headers corresponding to the given
+// sections. The interpreter and dynamic program headers are always included.
+func elfProgHdrs(sects []*Section) []ProgHeader {
+	var progHdrs []ProgHeader
+	// Add interpreter program header.
+	interpProgHdr := ProgHeader{
+		Title: "Interpreter program header",
+		Type:  elf.PT_INTERP.String(),
+		Name:  "interp",
+		Flags: elf.PF_R.String(),
+		Align: fmt.Sprintf("0x%X", 1),
+	}
+	progHdrs = append(progHdrs, interpProgHdr)
+	// Add dynamic program header.
+	dynamicProgHdr := ProgHeader{
+		Title: "Dynamic array program header",
+		Type:  elf.PT_DYNAMIC.String(),
+		Name:  "dynamic",
+		Flags: elf.PF_R.String(),
+		Align: fmt.Sprintf("0x%X", 4),
+	}
+	progHdrs = append(progHdrs, dynamicProgHdr)
+	// Add section program headers.
+	for _, sect := range sects {
+		title := fmt.Sprintf("%s segment program header", sect.Name)
+		name := nasmIdent(sect.Name)
+		flags := elfProgFlag(sect.Perm)
+		progHdr := ProgHeader{
+			Title: title,
+			Type:  elf.PT_LOAD.String(),
+			Name:  name,
+			Flags: ProgFlagString(flags),
+			Align: "PAGE",
+		}
+		progHdrs = append(progHdrs, progHdr)
+	}
+	return progHdrs
+}
+
+// TODO: parse imports.

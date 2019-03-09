@@ -39,10 +39,24 @@ func dumpFileHdr(w io.Writer) error {
 
 // --- [ Program headers ] -----------------------------------------------------
 
+// ProgHeader is an ELF program header.
+type ProgHeader struct {
+	// Title comment.
+	Title string
+	// Program header type.
+	Type string
+	// Name of program header.
+	Name string
+	// Memory access flags of segment.
+	Flags string
+	// Alignment of segment.
+	Align string
+}
+
 // dumpProgHdrs outputs the ELF program headers in NASM syntax based on the
 // given sections, writing to w.
-func dumpProgHdrs(w io.Writer, sects []*Section) error {
-	funcs := map[string]interface{}{
+func dumpProgHdrs(w io.Writer, progHdrs []ProgHeader) error {
+	funcs := template.FuncMap{
 		"h2": h2,
 	}
 	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
@@ -54,39 +68,6 @@ func dumpProgHdrs(w io.Writer, sects []*Section) error {
 	t, err := template.New(tmplName).Funcs(funcs).ParseFiles(tmplPath)
 	if err != nil {
 		return errors.WithStack(err)
-	}
-	var progHdrs []map[string]string
-	// Add interpreter program header.
-	interpProgHdr := map[string]string{
-		"title": "Interpreter program header",
-		"type":  elf.PT_INTERP.String(),
-		"name":  "interp",
-		"flags": elf.PF_R.String(),
-		"align": fmt.Sprintf("0x%X", 1),
-	}
-	progHdrs = append(progHdrs, interpProgHdr)
-	// Add dynamic program header.
-	dynamicProgHdr := map[string]string{
-		"title": "Dynamic array program header",
-		"type":  elf.PT_DYNAMIC.String(),
-		"name":  "dynamic",
-		"flags": elf.PF_R.String(),
-		"align": fmt.Sprintf("0x%X", 4),
-	}
-	progHdrs = append(progHdrs, dynamicProgHdr)
-	for _, sect := range sects {
-		_ = sect
-		title := fmt.Sprintf("%s segment program header", sect.Name)
-		name := nasmIdent(sect.Name)
-		flags := elfProgFlag(sect.Perm)
-		progHdr := map[string]string{
-			"title": title,
-			"type":  elf.PT_LOAD.String(),
-			"name":  name,
-			"flags": ProgFlagString(flags),
-			"align": "PAGE",
-		}
-		progHdrs = append(progHdrs, progHdr)
 	}
 	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
 	if err := t.Execute(tw, progHdrs); err != nil {
@@ -128,7 +109,7 @@ func dumpInterpSect(w io.Writer) error {
 
 // dumpDynamicSect outputs the .dynamic section in NASM syntax based on the
 // given imported libraries, writing to w.
-func dumpDynamicSect(w io.Writer, libs []string) error {
+func dumpDynamicSect(w io.Writer, libs []Library) error {
 	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
 	if err != nil {
 		return errors.WithStack(err)
@@ -140,8 +121,8 @@ func dumpDynamicSect(w io.Writer, libs []string) error {
 		return errors.WithStack(err)
 	}
 	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
-	data := map[string][]string{
-		"libs": libs,
+	data := map[string][]Library{
+		"Libs": libs,
 	}
 	if err := t.Execute(tw, data); err != nil {
 		return errors.WithStack(err)

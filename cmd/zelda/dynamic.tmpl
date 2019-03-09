@@ -30,11 +30,11 @@ dynamic:
 	dd      DT_PLTGOT	; tag: Entry type.
 	dd      got_plt	; val: Integer/Address value.
 
-{{- range .libs }}
+{{- range .Libs }}
 
-  .{{ . }}:
+  .{{ .Name }}:
 	dd      DT_NEEDED	; tag: Entry type.
-	dd      dynstr.{{ . }}_off	; val: Integer/Address value.
+	dd      dynstr.{{ .Name }}_off	; val: Integer/Address value.
 
 {{- end }}
 
