@@ -58,6 +58,10 @@ func relink(pePath string) error {
 	if err := dumpDynamicSect(out, libs); err != nil {
 		return errors.WithStack(err)
 	}
+	// .dynstr
+	if err := dumpDynstrSect(out, libs); err != nil {
+		return errors.WithStack(err)
+	}
 	fmt.Println(out.String())
 	return nil
 }

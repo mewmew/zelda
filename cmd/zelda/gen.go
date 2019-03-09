@@ -121,10 +121,30 @@ func dumpDynamicSect(w io.Writer, libs []Library) error {
 		return errors.WithStack(err)
 	}
 	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
-	data := map[string][]Library{
-		"Libs": libs,
+	if err := t.Execute(tw, libs); err != nil {
+		return errors.WithStack(err)
 	}
-	if err := t.Execute(tw, data); err != nil {
+	if err := tw.Flush(); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+// dumpDynstrSect outputs the .dynstr section in NASM syntax based on the given
+// imported libraries, writing to w.
+func dumpDynstrSect(w io.Writer, libs []Library) error {
+	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	const tmplName = "dynstr.tmpl"
+	tmplPath := filepath.Join(srcDir, tmplName)
+	t, err := template.New(tmplName).ParseFiles(tmplPath)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
+	if err := t.Execute(tw, libs); err != nil {
 		return errors.WithStack(err)
 	}
 	if err := tw.Flush(); err != nil {

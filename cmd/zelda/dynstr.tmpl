@@ -1,0 +1,22 @@
+; --- [ .dynstr section ] ------------------------------------------------------
+
+dynstr:
+{{ range . }}
+; .{{ .Filename }}
+  .{{ .Name }}:
+	db      "{{ .Filename }}", 0
+	{{- range .Funcs }}
+  .{{ . }}:
+	db      "{{ . }}", 0
+	{{- end }}
+{{ end }}
+
+{{- range . }}
+; {{ .Filename }}
+.{{ .Name }}_off	equ .{{ .Name }} - dynstr
+	{{- range .Funcs }}
+.{{ . }}_off	equ .{{ . }} - dynstr
+	{{- end }}
+{{ end }}
+; --- [/ .dynstr section ] -----------------------------------------------------
+

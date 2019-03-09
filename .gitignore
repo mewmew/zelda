@@ -3,3 +3,5 @@
 *.dll
 _skip_
 examples
+*.jpg
+*.png
