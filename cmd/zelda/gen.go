@@ -13,8 +13,34 @@ import (
 	"github.com/pkg/errors"
 )
 
+// --- [ File header ] ---------------------------------------------------------
+
+// dumpFileHdr outputs the ELF file header in NASM syntax, writing to w.
+func dumpFileHdr(w io.Writer) error {
+	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	const tmplName = "ehdr.tmpl"
+	tmplPath := filepath.Join(srcDir, tmplName)
+	t, err := template.New(tmplName).ParseFiles(tmplPath)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
+	if err := t.Execute(tw, nil); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := tw.Flush(); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+// --- [ Program headers ] -----------------------------------------------------
+
 // dumpProgHdrs outputs the ELF program headers in NASM syntax based on the
-// given sections.
+// given sections, writing to w.
 func dumpProgHdrs(w io.Writer, sects []*Section) error {
 	funcs := map[string]interface{}{
 		"h2": h2,
@@ -25,7 +51,7 @@ func dumpProgHdrs(w io.Writer, sects []*Section) error {
 	}
 	const tmplName = "phdr.tmpl"
 	tmplPath := filepath.Join(srcDir, tmplName)
-	t, err := template.New("phdr.tmpl").Funcs(funcs).ParseFiles(tmplPath)
+	t, err := template.New(tmplName).Funcs(funcs).ParseFiles(tmplPath)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -71,6 +97,8 @@ func dumpProgHdrs(w io.Writer, sects []*Section) error {
 	}
 	return nil
 }
+
+// ### [ Helper functions ] ####################################################
 
 // h2 returns a h2 heading as an 80-column NASM comment.
 func h2(title string) string {

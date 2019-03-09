@@ -29,8 +29,12 @@ func relink(pePath string) error {
 	}
 	// Parse sections.
 	sects := parseSects(file)
-	// Output ELF program headers.
+	// Output ELF file header.
 	out := &bytes.Buffer{}
+	if err := dumpFileHdr(out); err != nil {
+		return errors.WithStack(err)
+	}
+	// Output ELF program headers.
 	if err := dumpProgHdrs(out, sects); err != nil {
 		return errors.WithStack(err)
 	}
