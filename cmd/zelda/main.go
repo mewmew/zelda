@@ -66,6 +66,12 @@ func relink(pePath string) error {
 	if err := dumpRelPltSect(out, libs); err != nil {
 		return errors.WithStack(err)
 	}
+	// .got.plt
+	// TODO: ensure that the .got.plt section is located within a read-write area
+	// of memory.
+	if err := dumpGotPltSect(out, libs); err != nil {
+		return errors.WithStack(err)
+	}
 	fmt.Println(out.String())
 	return nil
 }

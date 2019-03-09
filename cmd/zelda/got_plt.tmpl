@@ -1,0 +1,21 @@
+; --- [ .got.plt section ] -----------------------------------------------------
+
+got_plt:
+
+  .dynamic:
+	dd      dynamic
+
+  .link_map:
+	dd      0
+
+  .dl_runtime_resolve:
+	dd      0
+{{ range . }}
+; .{{ .Filename }}
+	{{- range .Funcs }}
+  .{{ . }}:
+	dd      plt.resolve_{{ . }}
+	{{- end }}
+{{ end }}
+; --- [/ .got.plt section ] ----------------------------------------------------
+
