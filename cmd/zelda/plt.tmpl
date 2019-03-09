@@ -1,0 +1,19 @@
+; --- [ .plt section ] ---------------------------------------------------------
+
+plt:
+
+  .resolve:
+	push    dword [got_plt.link_map]
+	jmp     [got_plt.dl_runtime_resolve]
+{{ range . }}
+; .{{ .Filename }}
+	{{- range .Funcs }}
+  .{{ . }}:
+	jmp     [got_plt.{{ . }}]
+  .resolve_{{ . }}:
+	push    dword rel_plt.{{ . }}_off
+	jmp     near .resolve
+	{{- end }}
+{{ end }}
+; --- [/ .plt section ] --------------------------------------------------------
+
