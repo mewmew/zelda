@@ -2,10 +2,11 @@
 package main
 
 import (
+	"bytes"
 	"flag"
+	"fmt"
 	"log"
 
-	"github.com/kr/pretty"
 	"github.com/mewmew/pe"
 	"github.com/pkg/errors"
 )
@@ -28,10 +29,12 @@ func relink(pePath string) error {
 	}
 	// Parse sections.
 	sects := parseSects(file)
-	for _, sect := range sects {
-		sect.Data = nil
+	// Output ELF program headers.
+	out := &bytes.Buffer{}
+	if err := dumpProgHdrs(out, sects); err != nil {
+		return errors.WithStack(err)
 	}
-	pretty.Println(sects)
+	fmt.Println(out.String())
 	return nil
 }
 

@@ -1,0 +1,41 @@
+; === [ Program headers ] ======================================================
+
+; Segment types.
+PT_LOAD    equ 1 ; Loadable segment.
+PT_DYNAMIC equ 2 ; Dynamic linking information segment.
+PT_INTERP  equ 3 ; Pathname of interpreter.
+
+; Segment flags.
+PF_R equ 0x4 ; Readable.
+PF_W equ 0x2 ; Writable.
+PF_X equ 0x1 ; Executable.
+
+phdr_off equ phdr - $$
+
+phdr:
+
+{{- range $i, $v := . }}
+
+{{ h2 .title }}
+
+  .{{ .name }}:
+	dd      {{ .type }}	; type: Segment type
+	dd      {{ .name }}_off	; offset: Segment file offset
+	dd      {{ .name }}	; vaddr: Segment virtual address
+	dd      {{ .name }}	; paddr: Segment physical address
+	dd      {{ .name }}.size	; filesz: Segment size in file
+	dd      {{ .name }}.size	; memsz: Segment size in memory
+	dd      {{ .flags }}	; flags: Segment flags
+	dd      {{ .align }}	; align: Segment alignment
+
+{{- if eq $i 0 }}
+
+.entsize equ $ - phdr
+{{- end }}
+
+{{- end }}
+
+.size  equ $ - phdr
+.count equ .size / .entsize
+
+; === [/ Program headers ] =====================================================
