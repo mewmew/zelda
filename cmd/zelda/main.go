@@ -53,6 +53,11 @@ func relink(pePath string) error {
 		return errors.WithStack(err)
 	}
 	// Output sections.
+	// === [ Sections ] ===
+	const sectPre = "; === [ Sections ] =============================================================\n\n"
+	if _, err := out.WriteString(sectPre); err != nil {
+		return errors.WithStack(err)
+	}
 	// .interp
 	if err := dumpInterpSect(out); err != nil {
 		return errors.WithStack(err)
@@ -109,6 +114,12 @@ func relink(pePath string) error {
 	}
 	// ___ [/ Executable segment ] ___
 
+	const sectPost = "; === [/ Sections ] ============================================================\n\n"
+	if _, err := out.WriteString(sectPost); err != nil {
+		return errors.WithStack(err)
+	}
+	// === [/ Sections ] ===
+
 	fmt.Println(out.String())
 	return nil
 }
@@ -154,6 +165,33 @@ func elfProgHdrs(sects []*Section) []ProgHeader {
 		Align: "dynamic_align",
 	}
 	progHdrs = append(progHdrs, dynamicProgHdr)
+	// Add read-only segment program header.
+	rSegProgHdr := ProgHeader{
+		Title: "Read-only segment program header",
+		Type:  elf.PT_LOAD.String(),
+		Name:  "r_seg",
+		Flags: elf.PF_R.String(),
+		Align: "PAGE",
+	}
+	progHdrs = append(progHdrs, rSegProgHdr)
+	// Add read-write segment program header.
+	rwSegProgHdr := ProgHeader{
+		Title: "Read-write segment program header",
+		Type:  elf.PT_LOAD.String(),
+		Name:  "rw_seg",
+		Flags: ProgFlagString(elf.PF_R | elf.PF_W),
+		Align: "PAGE",
+	}
+	progHdrs = append(progHdrs, rwSegProgHdr)
+	// Add executable segment program header.
+	xSegProgHdr := ProgHeader{
+		Title: "Executable segment program header",
+		Type:  elf.PT_LOAD.String(),
+		Name:  "x_seg",
+		Flags: ProgFlagString(elf.PF_R | elf.PF_X),
+		Align: "PAGE",
+	}
+	progHdrs = append(progHdrs, xSegProgHdr)
 	// Add section program headers.
 	for _, sect := range sects {
 		title := fmt.Sprintf("%s segment program header", sect.Name)
