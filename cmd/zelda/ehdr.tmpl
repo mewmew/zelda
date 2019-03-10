@@ -12,6 +12,8 @@ ET_EXEC equ 2 ; Executable.
 ; CPU architectures.
 EM_386 equ 3 ; Intel i386.
 
+_text.start equ {{ printf "0x%08X" .Entry }}
+
 ehdr:
 
 	db      0x7F, "ELF"	; ident.magic: ELF magic number.

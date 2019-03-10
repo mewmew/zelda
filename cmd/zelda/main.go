@@ -45,7 +45,8 @@ func relink(pePath string) error {
 		return errors.WithStack(err)
 	}
 	// Output ELF file header.
-	if err := dumpFileHdr(out); err != nil {
+	entry := file.OptHdr.ImageBase + uint64(file.OptHdr.EntryRelAddr)
+	if err := dumpFileHdr(out, entry); err != nil {
 		return errors.WithStack(err)
 	}
 	// Get ELF program headers for the sections.

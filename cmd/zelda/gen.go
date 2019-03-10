@@ -16,8 +16,9 @@ import (
 
 // --- [ File header ] ---------------------------------------------------------
 
-// dumpFileHdr outputs the ELF file header in NASM syntax, writing to w.
-func dumpFileHdr(w io.Writer) error {
+// dumpFileHdr outputs the ELF file header in NASM syntax based on the given
+// entry point address, writing to w.
+func dumpFileHdr(w io.Writer, entry uint64) error {
 	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
 	if err != nil {
 		return errors.WithStack(err)
@@ -29,7 +30,10 @@ func dumpFileHdr(w io.Writer) error {
 		return errors.WithStack(err)
 	}
 	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
-	if err := t.Execute(tw, nil); err != nil {
+	data := map[string]uint64{
+		"Entry": entry,
+	}
+	if err := t.Execute(tw, data); err != nil {
 		return errors.WithStack(err)
 	}
 	if err := tw.Flush(); err != nil {
