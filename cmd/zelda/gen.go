@@ -456,7 +456,7 @@ func hexdump(data []byte) string {
 				buf.WriteString("      ")
 			}
 		}
-		buf.WriteString(" ; ")
+		buf.WriteString(" ; |")
 		for _, b := range line {
 			if !isPrint(b) {
 				buf.WriteString(".")
@@ -464,7 +464,7 @@ func hexdump(data []byte) string {
 				fmt.Fprintf(buf, "%c", b)
 			}
 		}
-		buf.WriteString("\n")
+		buf.WriteString("|\n")
 		pos = end
 	}
 	return buf.String()
