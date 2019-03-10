@@ -139,6 +139,7 @@ func relink(pePath string) error {
 
 // parseSects parses the sections of the given PE file into a unified format.
 func parseSects(file *pe.File) []*Section {
+	// TODO: add support for (partial) .bss sections (uninitialied data).
 	var sects []*Section
 	for _, sectHdr := range file.SectHdrs {
 		start := sectHdr.DataOffset
