@@ -434,16 +434,44 @@ func dumpSect(w io.Writer, sect *Section, prevSeg string) error {
 
 // hexdump outputs the given data as a hexdump in NASM format.
 func hexdump(data []byte) string {
-	//hex.Dump(data) // TODO: use hexdump?
 	buf := &bytes.Buffer{}
-	buf.WriteString("db ")
-	for i, b := range data {
-		if i != 0 {
-			buf.WriteString(", ")
+	for pos := 0; pos < len(data); {
+		end := pos + 16
+		if end > len(data) {
+			end = len(data)
 		}
-		fmt.Fprintf(buf, "0x%02X", b)
+		buf.WriteString("\tdb      ")
+		line := data[pos:end]
+		for i := 0; i < 16; i++ {
+			if i < len(line) {
+				if i != 0 {
+					buf.WriteString(", ")
+				}
+				fmt.Fprintf(buf, "0x%02X", line[i])
+			} else {
+				buf.WriteString("      ")
+			}
+		}
+		buf.WriteString(" ; ")
+		for _, b := range line {
+			if !isPrint(b) {
+				buf.WriteString(".")
+			} else {
+				fmt.Fprintf(buf, "%c", b)
+			}
+		}
+		buf.WriteString("\n")
+		pos = end
 	}
 	return buf.String()
+}
+
+// isPrint reports whether the given ASCII character is printable.
+func isPrint(b byte) bool {
+	//  For the standard ASCII character set (used by the "C" locale), printing
+	//  characters are all with an ASCII code greater than 0x1f (US), except 0x7f
+	//  (DEL).
+	return ' ' <= b && b <= '~'
 }
 
 // h0 returns a h0 heading as an 80-column NASM comment.

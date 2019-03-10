@@ -236,7 +236,7 @@ func parseImports(file *pe.File) []Library {
 		for _, iat := range imp.IATs {
 			var funcName string
 			if iat.IsOrdinal {
-				funcName = fmt.Sprintf("ordinal_%d", iat.Ordinal)
+				funcName = fmt.Sprintf("%s_ordinal_%d", baseName, iat.Ordinal)
 			} else {
 				funcName = iat.NameEntry.Name
 			}
