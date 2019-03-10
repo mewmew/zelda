@@ -15,16 +15,21 @@ import (
 )
 
 func main() {
+	var (
+		// nop address ranges.
+		nops AddrRanges
+	)
+	flag.Var(&nops, "nop", "nop address ranges")
 	flag.Parse()
 	for _, pePath := range flag.Args() {
-		if err := relink(pePath); err != nil {
+		if err := relink(pePath, nops); err != nil {
 			log.Fatalf("%+v", err)
 		}
 	}
 }
 
 // relink relinks the given PE file into a corresponding ELF file.
-func relink(pePath string) error {
+func relink(pePath string, nops AddrRanges) error {
 	// Parse PE file.
 	file, err := pe.ParseFile(pePath)
 	if err != nil {
@@ -121,6 +126,7 @@ func relink(pePath string) error {
 	// Output sections of PE file.
 	prevSeg := "x_seg"
 	for _, sect := range sects {
+		nopSect(sect, nops)
 		if err := dumpSect(out, sect, prevSeg); err != nil {
 			return errors.WithStack(err)
 		}
@@ -247,4 +253,16 @@ func parseImports(file *pe.File) []Library {
 		libs = append(libs, lib)
 	}
 	return libs
+}
+
+// nopSect nops the parts of the section contained within the given address
+// ranges.
+func nopSect(sect *Section, nops AddrRanges) {
+	b := byte(0x00) // 0 byte.
+	if sect.Perm&PermX != 0 {
+		b = byte(0x90) // NOP instruction
+	}
+	for _, nop := range nops {
+		sect.fill(nop, b)
+	}
 }

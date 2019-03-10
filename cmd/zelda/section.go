@@ -1,6 +1,10 @@
 package main
 
-import "github.com/mewmew/pe/enum"
+import (
+	"log"
+
+	"github.com/mewmew/pe/enum"
+)
 
 // A Section represents a continuous section of memory.
 type Section struct {
@@ -12,6 +16,25 @@ type Section struct {
 	Addr uint64
 	// Access permissions of section.
 	Perm Perm
+}
+
+// fill fills the address range with the given byte if present in the section.
+func (sect *Section) fill(a AddrRange, b byte) {
+	start := sect.Addr
+	end := start + uint64(len(sect.Data))
+	if a.Start > end {
+		return
+	}
+	if a.End <= start {
+		return
+	}
+	for i := a.Start; i < a.End; i++ {
+		if start <= i && i < end {
+			pos := i - sect.Addr
+			log.Printf("fill address 0x%08X with 0x%0X", i, b)
+			sect.Data[pos] = b
+		}
+	}
 }
 
 // --- [ Access permissions ] --------------------------------------------------
