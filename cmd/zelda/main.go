@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/mewkiz/pkg/pathutil"
@@ -14,12 +15,18 @@ import (
 	"github.com/pkg/errors"
 )
 
+func usage() {
+	fmt.Fprintln(os.Stderr, "Usage: zelda [OPTION]... FILE.exe...")
+	flag.PrintDefaults()
+}
+
 func main() {
 	var (
 		// nop address ranges.
 		nops AddrRanges
 	)
-	flag.Var(&nops, "nop", "nop address ranges")
+	flag.Usage = usage
+	flag.Var(&nops, "nop", `nop address ranges (e.g. "0x10-0x20,0x33-0x37")`)
 	flag.Parse()
 	for _, pePath := range flag.Args() {
 		if err := relink(pePath, nops); err != nil {
