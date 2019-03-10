@@ -1,6 +1,6 @@
 ; ___ [ Read-write segment ] ___________________________________________________
 
-SECTION .data vstart=BASE_RW_SEG follows=.rdata align=1
+SECTION rw_seg vstart=BASE_RW_SEG follows=r_seg align=1
 
 rw_seg_off equ r_seg_off + r_seg.size
 

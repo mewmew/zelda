@@ -1,0 +1,20 @@
+{{ h0 (printf "%s segment" .Name) }}
+
+SECTION {{ .Ident }} vstart={{ printf "0x%08X" .Addr }} follows={{ .PrevSeg }} align=1
+
+{{ .Ident }}_off equ {{ .PrevSeg }}_off + {{ .PrevSeg }}.size
+
+{{ h2 (printf "%s section" .Name) }}
+
+{{ .Ident }}:
+
+{{ hexdump .Data }}
+
+{{ h2End (printf "%s section" .Name) }}
+
+align PAGE, {{ .Pad }}
+
+{{ .Ident }}.size equ $ - {{ .Ident }}
+
+{{ h0End (printf "%s segment" .Name) }}
+

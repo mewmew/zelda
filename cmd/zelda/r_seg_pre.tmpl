@@ -11,7 +11,7 @@ BASE_X_SEG  equ BASE_RW_SEG + round(rw_seg.size, PAGE)
 
 ; ___ [ Read-only segment ] ____________________________________________________
 
-SECTION .rdata vstart=BASE_R_SEG align=1
+SECTION r_seg vstart=BASE_R_SEG align=1
 
 r_seg_off equ 0
 

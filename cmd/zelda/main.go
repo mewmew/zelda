@@ -34,11 +34,13 @@ func relink(pePath string) error {
 	sects := parseSects(file)
 	// Parse imported libraries.
 	libs := parseImports(file)
+	// TODO: add command line option to add extra import libraries.
 
 	// ___ [ Read-only segment ] ___
 	// Output header of read-only segment.
 	out := &bytes.Buffer{}
-	const base = 0x00400000
+	// TODO: make base address configurable from command line.
+	const base = 0x80400000 // use 0x8XXXXXXX to prevent conflict with 0x0XXXXXXX
 	if err := dumpRSegPre(out, base); err != nil {
 		return errors.WithStack(err)
 	}
@@ -54,6 +56,7 @@ func relink(pePath string) error {
 	}
 	// Output sections.
 	// === [ Sections ] ===
+	// Output sections header.
 	const sectPre = "; === [ Sections ] =============================================================\n\n"
 	if _, err := out.WriteString(sectPre); err != nil {
 		return errors.WithStack(err)
@@ -114,6 +117,15 @@ func relink(pePath string) error {
 	}
 	// ___ [/ Executable segment ] ___
 
+	// Output sections of PE file.
+	prevSeg := "x_seg"
+	for _, sect := range sects {
+		if err := dumpSect(out, sect, prevSeg); err != nil {
+			return errors.WithStack(err)
+		}
+		prevSeg = nasmIdent(sect.Name)
+	}
+	// Output sections footer.
 	const sectPost = "; === [/ Sections ] ============================================================\n\n"
 	if _, err := out.WriteString(sectPost); err != nil {
 		return errors.WithStack(err)
@@ -131,11 +143,12 @@ func parseSects(file *pe.File) []*Section {
 		start := sectHdr.DataOffset
 		end := start + sectHdr.DataSize
 		data := file.Content[start:end]
+		addr := file.OptHdr.ImageBase + uint64(sectHdr.RelAddr)
 		perm := parsePerm(sectHdr.Flags)
 		sect := &Section{
 			Name: sectHdr.Name,
 			Data: data,
-			Addr: uint64(sectHdr.RelAddr), // TODO: add IMAGE_BASE?
+			Addr: addr,
 			Perm: perm,
 		}
 		sects = append(sects, sect)

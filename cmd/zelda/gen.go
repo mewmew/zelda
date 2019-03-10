@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"debug/elf"
 	"fmt"
 	"io"
@@ -388,7 +389,78 @@ func dumpPltSect(w io.Writer, libs []Library) error {
 	return nil
 }
 
+// dumpSect outputs the given PE section in NASM syntax, writing to w.
+func dumpSect(w io.Writer, sect *Section, prevSeg string) error {
+	funcs := template.FuncMap{
+		"h0":      h0,
+		"h0End":   h0End,
+		"h2":      h2,
+		"h2End":   h2End,
+		"hexdump": hexdump,
+	}
+	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	const tmplName = "sect.tmpl"
+	tmplPath := filepath.Join(srcDir, tmplName)
+	t, err := template.New(tmplName).Funcs(funcs).ParseFiles(tmplPath)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
+	pad := "db 0x00"
+	if sect.Perm&PermX != 0 {
+		pad = "int3"
+	}
+	data := map[string]interface{}{
+		"Name":    sect.Name,
+		"Ident":   nasmIdent(sect.Name),
+		"PrevSeg": prevSeg,
+		"Addr":    sect.Addr,
+		"Data":    sect.Data,
+		"Pad":     pad,
+	}
+	if err := t.Execute(tw, data); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := tw.Flush(); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
 // ### [ Helper functions ] ####################################################
+
+// hexdump outputs the given data as a hexdump in NASM format.
+func hexdump(data []byte) string {
+	//hex.Dump(data) // TODO: use hexdump?
+	buf := &bytes.Buffer{}
+	buf.WriteString("db ")
+	for i, b := range data {
+		if i != 0 {
+			buf.WriteString(", ")
+		}
+		fmt.Fprintf(buf, "0x%02X", b)
+	}
+	return buf.String()
+}
+
+// h0 returns a h0 heading as an 80-column NASM comment.
+func h0(title string) string {
+	// ___ [ title ] ___
+	const width = 80
+	m := width - len("; ___ [ ") - len(title) - len(" ] ")
+	return fmt.Sprintf("; ___ [ %s ] %s", title, strings.Repeat("_", m))
+}
+
+// h0End returns an end h0 heading as an 80-column NASM comment.
+func h0End(title string) string {
+	// ___ [/ title ] ___
+	const width = 80
+	m := width - len("; ___ [/ ") - len(title) - len(" ] ")
+	return fmt.Sprintf("; ___ [/ %s ] %s", title, strings.Repeat("_", m))
+}
 
 // h2 returns a h2 heading as an 80-column NASM comment.
 func h2(title string) string {
@@ -396,6 +468,14 @@ func h2(title string) string {
 	const width = 80
 	m := width - len("; --- [ ") - len(title) - len(" ] ")
 	return fmt.Sprintf("; --- [ %s ] %s", title, strings.Repeat("-", m))
+}
+
+// h2End returns an end h2 heading as an 80-column NASM comment.
+func h2End(title string) string {
+	// --- [/ title ] ---
+	const width = 80
+	m := width - len("; --- [/ ") - len(title) - len(" ] ")
+	return fmt.Sprintf("; --- [/ %s ] %s", title, strings.Repeat("-", m))
 }
 
 // nasmIdent returns a valid NASM identifier based on the given string.

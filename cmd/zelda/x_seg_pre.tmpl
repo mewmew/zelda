@@ -1,6 +1,6 @@
 ; ___ [ Executable segment ] ___________________________________________________
 
-SECTION .text vstart=BASE_X_SEG follows=.data align=1
+SECTION x_seg vstart=BASE_X_SEG follows=rw_seg align=1
 
 x_seg_off equ rw_seg_off + rw_seg.size
 
