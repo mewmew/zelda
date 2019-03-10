@@ -1,0 +1,27 @@
+; --- [ .tib section ] ---------------------------------------------------------
+
+_tib:
+
+; Dummy Thread Information Block (TIB).
+;
+; ref: https://web.archive.org/web/20170626205226/http://www.microsoft.com/msj/archive/s2cea.htm
+
+  .dummy:
+	dd      0	; 00 pvExcept: Head of exception record list.
+	dd      0	; 04 pvStackUserTop: Top of user stack.
+	dd      0	; 08 pvStackUserBase: Base of user stack.
+	dw      0	; 0C pvTDB: TBD.
+	dw      0	; 0E pvThunkSS: SS selector used for thunking to 16 bits
+	dd      0	; 10 unknown1.
+	dd      0	; 14 pvArbitrary: Available for application use.
+	dd      _tib.dummy	; 18 ptibSelf: Linear address of TIB structure.
+	dw      0	; 1C TIBFlags.
+	dw      0	; 1E Win16MutexCount.
+	dd      0	; 20 DebugContext.
+	dd      0	; 24 pCurrentPriority.
+	dd      0	; 28 pvQueue.
+	dd      0	; 2C pvTLSArray: Thread Local Storage array.
+	dd      0	; 30 pProcess: Pointer to owning process database.
+
+; --- [/ .tib section ] --------------------------------------------------------
+

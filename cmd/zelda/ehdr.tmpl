@@ -24,7 +24,7 @@ ehdr:
 	dw      ET_EXEC	; type: File type.
 	dw      EM_386	; machine: Machine architecture.
 	dd      1	; version: ELF format version.
-	dd      _text.start	; entry: Entry point.
+	dd      _init.entry	; entry: Entry point.
 	dd      phdr_off	; phoff: Program header file offset.
 	dd      0	; shoff: Section header file offset.
 	dd      0	; flags: Architecture-specific flags.

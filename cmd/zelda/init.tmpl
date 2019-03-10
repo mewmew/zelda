@@ -1,0 +1,18 @@
+; --- [ .init section ] --------------------------------------------------------
+
+_init:
+
+; Entry prologue to initialize the Thread Information Block (TIB).
+;
+; ref: https://web.archive.org/web/20170704035330/http://www.microsoft.com/msj/archive/s2ce.aspx
+
+  .entry:
+	; The FS register points to the TIB.
+	push     _tib.dummy
+	pop      fs
+
+	; For example, FS:[0] points to the structured exception handling chain, while FS:[2C] points to the thread's thread local storage array.
+	call     _text.start
+
+; --- [/ .init section ] -------------------------------------------------------
+

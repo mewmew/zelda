@@ -97,6 +97,10 @@ func relink(pePath string) error {
 	if err := dumpGotPltSect(out, libs); err != nil {
 		return errors.WithStack(err)
 	}
+	// .tib
+	if err := dumpTibSect(out); err != nil {
+		return errors.WithStack(err)
+	}
 	// Output footer of read-write segment.
 	if err := dumpRWSegPost(out); err != nil {
 		return errors.WithStack(err)
@@ -110,6 +114,10 @@ func relink(pePath string) error {
 	}
 	// .plt
 	if err := dumpPltSect(out, libs); err != nil {
+		return errors.WithStack(err)
+	}
+	// .init
+	if err := dumpInitSect(out); err != nil {
 		return errors.WithStack(err)
 	}
 	// Output footer of executable segment.

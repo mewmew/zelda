@@ -370,6 +370,28 @@ func dumpGotPltSect(w io.Writer, libs []Library) error {
 	return nil
 }
 
+// dumpTibSect outputs the .tib section in NASM syntax, writing to w.
+func dumpTibSect(w io.Writer) error {
+	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	const tmplName = "tib.tmpl"
+	tmplPath := filepath.Join(srcDir, tmplName)
+	t, err := template.New(tmplName).ParseFiles(tmplPath)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
+	if err := t.Execute(tw, nil); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := tw.Flush(); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
 // dumpPltSect outputs the .plt section in NASM syntax based on the given
 // imported libraries, writing to w.
 func dumpPltSect(w io.Writer, libs []Library) error {
@@ -385,6 +407,28 @@ func dumpPltSect(w io.Writer, libs []Library) error {
 	}
 	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
 	if err := t.Execute(tw, libs); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := tw.Flush(); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+// dumpInitSect outputs the .init section in NASM syntax, writing to w.
+func dumpInitSect(w io.Writer) error {
+	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	const tmplName = "init.tmpl"
+	tmplPath := filepath.Join(srcDir, tmplName)
+	t, err := template.New(tmplName).ParseFiles(tmplPath)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
+	if err := t.Execute(tw, nil); err != nil {
 		return errors.WithStack(err)
 	}
 	if err := tw.Flush(); err != nil {
