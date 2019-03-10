@@ -79,6 +79,149 @@ func dumpProgHdrs(w io.Writer, progHdrs []ProgHeader) error {
 	return nil
 }
 
+// === [ Segments ] ============================================================
+
+// dumpRSegPre outputs the header of a read-only segment in NASM syntax based on
+// the given base address, writing to w.
+func dumpRSegPre(w io.Writer, base uint64) error {
+	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	const tmplName = "r_seg_pre.tmpl"
+	tmplPath := filepath.Join(srcDir, tmplName)
+	t, err := template.New(tmplName).ParseFiles(tmplPath)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
+	data := map[string]string{
+		"Base": fmt.Sprintf("0x%08X", base),
+	}
+	if err := t.Execute(tw, data); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := tw.Flush(); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+// dumpRSegPost outputs the footer of a read-only segment in NASM syntax,
+// writing to w.
+func dumpRSegPost(w io.Writer) error {
+	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	const tmplName = "r_seg_post.tmpl"
+	tmplPath := filepath.Join(srcDir, tmplName)
+	t, err := template.New(tmplName).ParseFiles(tmplPath)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
+	if err := t.Execute(tw, nil); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := tw.Flush(); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+// dumpRWSegPre outputs the header of a read-write segment in NASM syntax,
+// writing to w.
+func dumpRWSegPre(w io.Writer) error {
+	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	const tmplName = "rw_seg_pre.tmpl"
+	tmplPath := filepath.Join(srcDir, tmplName)
+	t, err := template.New(tmplName).ParseFiles(tmplPath)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
+	if err := t.Execute(tw, nil); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := tw.Flush(); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+// dumpRWSegPost outputs the footer of a read-write segment in NASM syntax,
+// writing to w.
+func dumpRWSegPost(w io.Writer) error {
+	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	const tmplName = "rw_seg_post.tmpl"
+	tmplPath := filepath.Join(srcDir, tmplName)
+	t, err := template.New(tmplName).ParseFiles(tmplPath)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
+	if err := t.Execute(tw, nil); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := tw.Flush(); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+// dumpXSegPre outputs the header of an executable segment in NASM syntax,
+// writing to w.
+func dumpXSegPre(w io.Writer) error {
+	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	const tmplName = "x_seg_pre.tmpl"
+	tmplPath := filepath.Join(srcDir, tmplName)
+	t, err := template.New(tmplName).ParseFiles(tmplPath)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
+	if err := t.Execute(tw, nil); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := tw.Flush(); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+// dumpXSegPost outputs the footer of an executable segment in NASM syntax,
+// writing to w.
+func dumpXSegPost(w io.Writer) error {
+	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	const tmplName = "x_seg_post.tmpl"
+	tmplPath := filepath.Join(srcDir, tmplName)
+	t, err := template.New(tmplName).ParseFiles(tmplPath)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
+	if err := t.Execute(tw, nil); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := tw.Flush(); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
 // === [ Sections ] ============================================================
 
 // --- [ .interp section ] -----------------------------------------------------

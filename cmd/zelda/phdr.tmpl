@@ -10,7 +10,7 @@ PF_R equ 0x4 ; Readable.
 PF_W equ 0x2 ; Writable.
 PF_X equ 0x1 ; Executable.
 
-phdr_off equ phdr - $$
+phdr_off equ phdr - BASE_R_SEG
 
 phdr:
 

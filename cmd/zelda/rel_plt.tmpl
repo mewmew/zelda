@@ -5,7 +5,7 @@ R_386_JMP_SLOT equ 7 ; Set GOT entry to code address.
 
 rel_plt:
 {{ range . }}
-; .{{ .Filename }}
+; {{ .Filename }}
 	{{- range .Funcs }}
   .{{ . }}:
 	dd      got_plt.{{ . }}	; offset: Location to be relocated.

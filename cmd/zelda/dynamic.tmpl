@@ -8,7 +8,7 @@ DT_STRTAB equ 5  ; Address of string table.
 DT_SYMTAB equ 6  ; Address of symbol table.
 DT_JMPREL equ 23 ; Address of PLT relocations.
 
-dynamic_off equ dynamic - $$
+dynamic_off equ dynamic - BASE_R_SEG
 
 dynamic:
 

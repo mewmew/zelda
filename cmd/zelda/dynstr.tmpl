@@ -2,7 +2,7 @@
 
 dynstr:
 {{ range . }}
-; .{{ .Filename }}
+; {{ .Filename }}
   .{{ .Name }}:
 	db      "{{ .Filename }}", 0
 	{{- range .Funcs }}

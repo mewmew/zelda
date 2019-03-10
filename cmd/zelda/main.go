@@ -34,8 +34,15 @@ func relink(pePath string) error {
 	sects := parseSects(file)
 	// Parse imported libraries.
 	libs := parseImports(file)
-	// Output ELF file header.
+
+	// ___ [ Read-only segment ] ___
+	// Output header of read-only segment.
 	out := &bytes.Buffer{}
+	const base = 0x00400000
+	if err := dumpRSegPre(out, base); err != nil {
+		return errors.WithStack(err)
+	}
+	// Output ELF file header.
 	if err := dumpFileHdr(out); err != nil {
 		return errors.WithStack(err)
 	}
@@ -66,18 +73,42 @@ func relink(pePath string) error {
 	if err := dumpRelPltSect(out, libs); err != nil {
 		return errors.WithStack(err)
 	}
+	// Output footer of read-only segment.
+	if err := dumpRSegPost(out); err != nil {
+		return errors.WithStack(err)
+	}
+	// ___ [/ Read-only segment ] ___
+
+	// ___ [ Read-write segment ] ___
+	// Output header of read-write segment.
+	if err := dumpRWSegPre(out); err != nil {
+		return errors.WithStack(err)
+	}
 	// .got.plt
-	// TODO: ensure that the .got.plt section is located within a read-write area
-	// of memory.
 	if err := dumpGotPltSect(out, libs); err != nil {
 		return errors.WithStack(err)
 	}
+	// Output footer of read-write segment.
+	if err := dumpRWSegPost(out); err != nil {
+		return errors.WithStack(err)
+	}
+	// ___ [/ Read-write segment ] ___
+
+	// ___ [ Executable segment ] ___
+	// Output header of executable segment.
+	if err := dumpXSegPre(out); err != nil {
+		return errors.WithStack(err)
+	}
 	// .plt
-	// TODO: ensure that the .plt section is located within a read-execute area
-	// of memory.
 	if err := dumpPltSect(out, libs); err != nil {
 		return errors.WithStack(err)
 	}
+	// Output footer of executable segment.
+	if err := dumpXSegPost(out); err != nil {
+		return errors.WithStack(err)
+	}
+	// ___ [/ Executable segment ] ___
+
 	fmt.Println(out.String())
 	return nil
 }
@@ -120,7 +151,7 @@ func elfProgHdrs(sects []*Section) []ProgHeader {
 		Type:  elf.PT_DYNAMIC.String(),
 		Name:  "dynamic",
 		Flags: elf.PF_R.String(),
-		Align: fmt.Sprintf("0x%X", 4),
+		Align: "dynamic_align",
 	}
 	progHdrs = append(progHdrs, dynamicProgHdr)
 	// Add section program headers.

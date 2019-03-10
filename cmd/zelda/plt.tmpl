@@ -6,7 +6,7 @@ plt:
 	push    dword [got_plt.link_map]
 	jmp     [got_plt.dl_runtime_resolve]
 {{ range . }}
-; .{{ .Filename }}
+; {{ .Filename }}
 	{{- range .Funcs }}
   .{{ . }}:
 	jmp     [got_plt.{{ . }}]

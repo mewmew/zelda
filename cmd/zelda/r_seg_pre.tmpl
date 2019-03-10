@@ -1,0 +1,19 @@
+BITS 32
+
+%define round(n, r)     (((n + (r - 1)) / r) * r)
+
+; Base addresses.
+BASE        equ {{ .Base }}
+PAGE        equ 0x1000
+BASE_R_SEG  equ BASE
+BASE_RW_SEG equ BASE_R_SEG + round(r_seg.size, PAGE)
+BASE_X_SEG  equ BASE_RW_SEG + round(rw_seg.size, PAGE)
+
+; ___ [ Read-only segment ] ____________________________________________________
+
+SECTION .rdata vstart=BASE_R_SEG align=1
+
+r_seg_off equ 0
+
+r_seg:
+

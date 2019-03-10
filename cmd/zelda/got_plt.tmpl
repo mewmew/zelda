@@ -11,7 +11,7 @@ got_plt:
   .dl_runtime_resolve:
 	dd      0
 {{ range . }}
-; .{{ .Filename }}
+; {{ .Filename }}
 	{{- range .Funcs }}
   .{{ . }}:
 	dd      plt.resolve_{{ . }}

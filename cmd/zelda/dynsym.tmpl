@@ -11,13 +11,13 @@ STV_DEFAULT equ 0 ; Default visibility.
 
 dynsym:
 {{ range $i, $lib := . }}
-; .{{ .Filename }}
+; {{ .Filename }}
 	{{- range $j, $f := .Funcs }}
   .{{ . }}:
 	dd      dynstr.{{ . }}_off	; name: String table offset of name.
 	dd      0	; value: Symbol value.
 	dd      0	; size: Size of associated object.
-	db      STB_GLOBAL<<4 | STT_FUNC	; info: Type and binding information.
+	db      STT_FUNC | STB_GLOBAL<<4	; info: Type and binding information.
 	db      STV_DEFAULT	; other: Symbol visibility.
 	dw      0	; shndx: Section index of symbol.
 {{- if and (eq $i 0) (eq $j 0) }}
