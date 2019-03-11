@@ -12,6 +12,10 @@ type Section struct {
 	Name string
 	// Contents of section.
 	Data []byte
+	// Size of section contents in number of bytes. If Size < len(Data) then the
+	// remaining bytes of Data are padding. If Size > len(Data) then the missing
+	// bytes are uninitialized.
+	Size int64
 	// Virtual address of section.
 	Addr uint64
 	// Access permissions of section.

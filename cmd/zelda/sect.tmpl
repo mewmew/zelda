@@ -11,6 +11,10 @@ SECTION {{ .Ident }} vstart={{ printf "0x%08X" .Addr }} follows={{ .PrevSeg }} a
 {{ . }}
 {{- end }}
 {{ hexdump .Data }}
+{{ with .BSSData }}
+; Uninitialized data.
+{{ . }}
+{{- end }}
 
 {{ h2End (printf "%s section" .Name) }}
 

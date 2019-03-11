@@ -426,6 +426,7 @@ func dumpSect(w io.Writer, sect *Section, prevSeg string, libImpsBuf string, lib
 		"Data":    sect.Data,
 		"Pad":     pad,
 	}
+	// Add library imports if present in section.
 	sectEndAddr := sect.Addr + uint64(len(sect.Data))
 	libImpsEndAddr := libImpsAddr + uint64(len(libImpsBuf))
 	if sect.Addr <= libImpsAddr && libImpsEndAddr <= sectEndAddr {
@@ -441,6 +442,13 @@ func dumpSect(w io.Writer, sect *Section, prevSeg string, libImpsBuf string, lib
 		data["LibImps"] = libImpsBuf
 		// Skip contents of library imports in hexdump data.
 		data["Data"] = sect.Data[libImpsSize:]
+	}
+	// Add uninitialized data if present in section.
+	if sect.Size > int64(len(sect.Data)) {
+		// Section contains uninitialized data.
+		bssSize := sect.Size - int64(len(sect.Data))
+		bssData := fmt.Sprintf("resb %d", bssSize)
+		data["BSSData"] = bssData
 	}
 	if err := t.Execute(tw, data); err != nil {
 		return errors.WithStack(err)
