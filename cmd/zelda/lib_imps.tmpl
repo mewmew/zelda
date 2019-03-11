@@ -1,0 +1,8 @@
+{{ h2 (printf "%s imports" .Filename) }}
+{{ range .Funcs }}
+	dd      plt.{{ . }}
+{{- end }}
+	dd      0
+
+{{ h2End (printf "%s imports" .Filename) }}
+

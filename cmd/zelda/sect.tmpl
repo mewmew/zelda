@@ -7,7 +7,9 @@ SECTION {{ .Ident }} vstart={{ printf "0x%08X" .Addr }} follows={{ .PrevSeg }} a
 {{ h2 (printf "%s section" .Name) }}
 
 {{ .Ident }}:
-
+{{ with .LibImps }}
+{{ . }}
+{{- end }}
 {{ hexdump .Data }}
 
 {{ h2End (printf "%s section" .Name) }}

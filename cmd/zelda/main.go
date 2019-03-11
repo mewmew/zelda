@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/mewkiz/pkg/pathutil"
@@ -130,11 +131,46 @@ func relink(pePath string, nops AddrRanges) error {
 	}
 	// ___ [/ Executable segment ] ___
 
+	// === [ Library imports ] ===
+	libImpsBuf := &bytes.Buffer{}
+	impLibs := make([]Library, len(libs))
+	copy(impLibs, libs)
+	// Sort import libraries by their occurrence in the PE file.
+	libRelAddr := make(map[string]uint32)
+	for _, imp := range file.Imps {
+		baseName := pathutil.TrimExt(strings.ToLower(imp.ImpDir.Name))
+		libRelAddr[baseName] = imp.ImpDir.IATRelAddr
+	}
+	less := func(i, j int) bool {
+		return libRelAddr[impLibs[i].Name] < libRelAddr[impLibs[j].Name]
+	}
+	sort.Slice(impLibs, less)
+	for _, impLib := range impLibs {
+		if err := dumpLibImps(libImpsBuf, impLib); err != nil {
+			return errors.WithStack(err)
+		}
+	}
+	// Relative address of first import entity.
+	var minIATRelAddr uint64
+	for _, relAddr := range libRelAddr {
+		iatRelAddr := uint64(relAddr)
+		if minIATRelAddr == 0 || iatRelAddr < minIATRelAddr {
+			minIATRelAddr = iatRelAddr
+		}
+	}
+	libImpsAddr := file.OptHdr.ImageBase + minIATRelAddr
+	libImpsSize := 0
+	for _, lib := range libs {
+		// 4 bytes per function and a terminating NULL import entry.
+		libImpsSize += 4 * (len(lib.Funcs) + 1)
+	}
+	// === [/ Library imports ] ===
+
 	// Output sections of PE file.
 	prevSeg := "x_seg"
 	for _, sect := range sects {
 		nopSect(sect, nops)
-		if err := dumpSect(out, sect, prevSeg); err != nil {
+		if err := dumpSect(out, sect, prevSeg, libImpsBuf.String(), libImpsAddr, libImpsSize); err != nil {
 			return errors.WithStack(err)
 		}
 		prevSeg = nasmIdent(sect.Name)

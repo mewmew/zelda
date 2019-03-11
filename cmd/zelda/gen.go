@@ -393,8 +393,9 @@ func dumpPltSect(w io.Writer, libs []Library) error {
 	return nil
 }
 
-// dumpSect outputs the given PE section in NASM syntax, writing to w.
-func dumpSect(w io.Writer, sect *Section, prevSeg string) error {
+// dumpSect outputs the given PE section in NASM syntax and PE library imports,
+// writing to w.
+func dumpSect(w io.Writer, sect *Section, prevSeg string, libImpsBuf string, libImpsAddr uint64, libImpsSize int) error {
 	funcs := template.FuncMap{
 		"h0":      h0,
 		"h0End":   h0End,
@@ -425,7 +426,50 @@ func dumpSect(w io.Writer, sect *Section, prevSeg string) error {
 		"Data":    sect.Data,
 		"Pad":     pad,
 	}
+	sectEndAddr := sect.Addr + uint64(len(sect.Data))
+	libImpsEndAddr := libImpsAddr + uint64(len(libImpsBuf))
+	if sect.Addr <= libImpsAddr && libImpsEndAddr <= sectEndAddr {
+		if sect.Addr != libImpsAddr {
+			// TODO: implement support for library imports in the middle of a
+			// section. Also, implement support for library entries that are
+			// located at separate places in the PE file (one location per
+			// library). Finally, ensure that alignment and padding is correct. Add
+			// sanity check for addresses as we transition from library entries to
+			// hexdump data.
+			panic("support for PE library imports in the middle of section not yet implemented")
+		}
+		data["LibImps"] = libImpsBuf
+		// Skip contents of library imports in hexdump data.
+		data["Data"] = sect.Data[libImpsSize:]
+	}
 	if err := t.Execute(tw, data); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := tw.Flush(); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+// dumpLibImps outputs a redirection from the given PE import entries to their
+// corresponding ELF dynamic symbols in NASM syntax, writing to w.
+func dumpLibImps(w io.Writer, lib Library) error {
+	funcs := template.FuncMap{
+		"h2":    h2,
+		"h2End": h2End,
+	}
+	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	const tmplName = "lib_imps.tmpl"
+	tmplPath := filepath.Join(srcDir, tmplName)
+	t, err := template.New(tmplName).Funcs(funcs).ParseFiles(tmplPath)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
+	if err := t.Execute(tw, lib); err != nil {
 		return errors.WithStack(err)
 	}
 	if err := tw.Flush(); err != nil {
