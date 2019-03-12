@@ -404,6 +404,7 @@ loop:
 	// Mark the remaining bytes of Data as padding.
 	for i := 0; i < len(sect.Data); {
 		buf := sect.Data[i:]
+		fmt.Fprintf(out, "; address: %s\n", addr)
 		for _, f := range fs {
 			n, err := f(out, addr, buf)
 			if err != nil {

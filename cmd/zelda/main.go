@@ -64,6 +64,17 @@ func relink(pePath string, nops AddrRanges, staticLibs []StaticLib) error {
 	sects := parseSects(file)
 	// Parse imported libraries.
 	libs := parseImports(file)
+	// Add dynamic libraries of statically linked libraries.
+	for _, staticLib := range staticLibs {
+		lib := Library{
+			Name:     libName(staticLib.Filename),
+			Filename: staticLib.Filename,
+		}
+		for _, fn := range staticLib.Funcs {
+			lib.Funcs = append(lib.Funcs, fn.Name)
+		}
+		libs = append(libs, lib)
+	}
 	// TODO: add command line option to add extra import libraries.
 
 	// ___ [ Read-only segment ] ___
@@ -151,11 +162,16 @@ func relink(pePath string, nops AddrRanges, staticLibs []StaticLib) error {
 	// Output sections of PE file.
 	prevSeg := "x_seg"
 	var fs []func(w io.Writer, addr Address, buf []byte) (int, error)
-	f, err := getLibImpsPrinter(file, libs)
+	libImpsPrinter, err := getLibImpsPrinter(file)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	fs = append(fs, f)
+	fs = append(fs, libImpsPrinter)
+	staticLibsPrinter, err := getStaticLibsPrinter(staticLibs)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	fs = append(fs, staticLibsPrinter)
 	for _, sect := range sects {
 		nopSect(sect, nops)
 		content, err := genSectContent(sect, fs...)
@@ -178,20 +194,50 @@ func relink(pePath string, nops AddrRanges, staticLibs []StaticLib) error {
 	return nil
 }
 
+// getStaticLibsPrinter returns a pretty-printed for statically linked library.
+func getStaticLibsPrinter(staticLibs []StaticLib) (func(w io.Writer, addr Address, buf []byte) (int, error), error) {
+	f := func(w io.Writer, addr Address, buf []byte) (int, error) {
+		for _, staticLib := range staticLibs {
+			for _, fn := range staticLib.Funcs {
+				if fn.Addr == addr {
+					if _, err := fmt.Fprintf(w, "\tjmp     plt.%s\n", fn.Name); err != nil {
+						return 0, errors.WithStack(err)
+					}
+					// TODO: figure out how to calculate size of JMP instruction.
+					return 5, nil
+				}
+			}
+		}
+		return 0, nil
+	}
+	return f, nil
+}
+
 // getLibImpsPrinter returns a pretty-printed for library imports.
-func getLibImpsPrinter(file *pe.File, libs []Library) (func(w io.Writer, addr Address, buf []byte) (int, error), error) {
+func getLibImpsPrinter(file *pe.File) (func(w io.Writer, addr Address, buf []byte) (int, error), error) {
 	// === [ Library imports ] ===
 	libImpsBuf := &bytes.Buffer{}
-	impLibs := make([]Library, len(libs))
-	copy(impLibs, libs)
+	// Ensure that we only include libraries present in the original PE file, and
+	// not any added libraries; as these will be pretty-printed to their original
+	// offset in the .idata section of the PE.
+	impLibs := parseImports(file)
 	// Sort import libraries by their occurrence in the PE file.
 	libRelAddr := make(map[string]uint32)
 	for _, imp := range file.Imps {
-		baseName := pathutil.TrimExt(strings.ToLower(imp.ImpDir.Name))
+		baseName := libName(imp.ImpDir.Name)
 		libRelAddr[baseName] = imp.ImpDir.IATRelAddr
 	}
 	less := func(i, j int) bool {
-		return libRelAddr[impLibs[i].Name] < libRelAddr[impLibs[j].Name]
+		// Ensure that libraries present in the original PE file are sorted first, as their offset
+		iv, ok1 := libRelAddr[impLibs[i].Name]
+		if !ok1 {
+			panic(fmt.Errorf("invalid relative import library %q, not present in original PE file", impLibs[i].Name))
+		}
+		jv, ok2 := libRelAddr[impLibs[j].Name]
+		if !ok2 {
+			panic(fmt.Errorf("invalid relative import library %q, not present in original PE file", impLibs[j].Name))
+		}
+		return iv < jv
 	}
 	sort.Slice(impLibs, less)
 	for _, impLib := range impLibs {
@@ -209,9 +255,9 @@ func getLibImpsPrinter(file *pe.File, libs []Library) (func(w io.Writer, addr Ad
 	}
 	libImpsAddr := Address(file.OptHdr.ImageBase) + minIATRelAddr
 	libImpsSize := 0
-	for _, lib := range libs {
+	for _, impLib := range impLibs {
 		// 4 bytes per function and a terminating NULL import entry.
-		libImpsSize += 4 * (len(lib.Funcs) + 1)
+		libImpsSize += 4 * (len(impLib.Funcs) + 1)
 	}
 	// === [/ Library imports ] ===
 	f := func(w io.Writer, addr Address, buf []byte) (int, error) {
@@ -318,7 +364,7 @@ func elfProgHdrs(sects []*Section) []ProgHeader {
 func parseImports(file *pe.File) []Library {
 	var libs []Library
 	for _, imp := range file.Imps {
-		baseName := pathutil.TrimExt(strings.ToLower(imp.ImpDir.Name))
+		baseName := libName(imp.ImpDir.Name)
 		filename := baseName + ".so"
 		lib := Library{
 			Name:     baseName,
@@ -347,5 +393,20 @@ func nopSect(sect *Section, nops AddrRanges) {
 	}
 	for _, nop := range nops {
 		sect.fill(nop, b)
+	}
+}
+
+// libName returns the basename without extension of the given library file
+// name.
+func libName(filename string) string {
+	filename = strings.ToLower(filename)
+	// libc.so.6 -> libc
+	for {
+		// Trim multiple extensions, as used by symlinks.
+		s := pathutil.TrimExt(filename)
+		if s == filename {
+			return s
+		}
+		filename = s
 	}
 }

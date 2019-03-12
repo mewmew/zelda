@@ -32,10 +32,10 @@ func (sect *Section) fill(a AddrRange, b byte) {
 	if a.End <= start {
 		return
 	}
-	for i := a.Start; i < a.End; i++ {
-		if start <= i && i < end {
-			pos := i - sect.Addr
-			log.Printf("fill address 0x%08X with 0x%0X", i, b)
+	for addr := a.Start; addr < a.End; addr++ {
+		if start <= addr && addr < end {
+			pos := addr - sect.Addr
+			log.Printf("fill address %s with 0x%0X", addr, b)
 			sect.Data[pos] = b
 		}
 	}
