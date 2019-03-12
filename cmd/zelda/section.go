@@ -17,7 +17,7 @@ type Section struct {
 	// bytes are uninitialized.
 	Size int64
 	// Virtual address of section.
-	Addr uint64
+	Addr Address
 	// Access permissions of section.
 	Perm Perm
 }
@@ -25,7 +25,7 @@ type Section struct {
 // fill fills the address range with the given byte if present in the section.
 func (sect *Section) fill(a AddrRange, b byte) {
 	start := sect.Addr
-	end := start + uint64(len(sect.Data))
+	end := start + Address(len(sect.Data))
 	if a.Start > end {
 		return
 	}

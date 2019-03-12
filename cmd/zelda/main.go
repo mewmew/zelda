@@ -6,10 +6,13 @@ import (
 	"debug/elf"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"sort"
 	"strings"
+
+	"github.com/mewkiz/pkg/jsonutil"
 
 	"github.com/mewkiz/pkg/pathutil"
 	"github.com/mewmew/pe"
@@ -22,22 +25,36 @@ func usage() {
 }
 
 func main() {
+	// Parse command line arguments.
 	var (
 		// nop address ranges.
 		nops AddrRanges
+		// Path to JSON file of statically linked libraries.
+		staticLibsPath string
 	)
 	flag.Usage = usage
 	flag.Var(&nops, "nop", `nop address ranges (e.g. "0x10-0x20,0x33-0x37")`)
+	flag.StringVar(&staticLibsPath, "static_libs", "", "path to JSON file of statically linked libraries")
 	flag.Parse()
+
+	// Parse JSON file of statically linked functions.
+	var staticLibs []StaticLib
+	if len(staticLibsPath) > 0 {
+		if err := jsonutil.ParseFile(staticLibsPath, &staticLibs); err != nil {
+			log.Fatalf("%+v", err)
+		}
+	}
 	for _, pePath := range flag.Args() {
-		if err := relink(pePath, nops); err != nil {
+		if err := relink(pePath, nops, staticLibs); err != nil {
 			log.Fatalf("%+v", err)
 		}
 	}
 }
 
-// relink relinks the given PE file into a corresponding ELF file.
-func relink(pePath string, nops AddrRanges) error {
+// relink relinks the given PE file into a corresponding ELF file. If specified,
+// the nop address ranges are nop'ed out, and the statically linked libraries
+// are replaced with dynamic libraries.
+func relink(pePath string, nops AddrRanges, staticLibs []StaticLib) error {
 	// Parse PE file.
 	file, err := pe.ParseFile(pePath)
 	if err != nil {
@@ -131,6 +148,38 @@ func relink(pePath string, nops AddrRanges) error {
 	}
 	// ___ [/ Executable segment ] ___
 
+	// Output sections of PE file.
+	prevSeg := "x_seg"
+	var fs []func(w io.Writer, addr Address, buf []byte) (int, error)
+	f, err := getLibImpsPrinter(file, libs)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	fs = append(fs, f)
+	for _, sect := range sects {
+		nopSect(sect, nops)
+		content, err := genSectContent(sect, fs...)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if err := dumpSect(out, sect, prevSeg, content); err != nil {
+			return errors.WithStack(err)
+		}
+		prevSeg = nasmIdent(sect.Name)
+	}
+	// Output sections footer.
+	const sectPost = "; === [/ Sections ] ============================================================\n\n"
+	if _, err := out.WriteString(sectPost); err != nil {
+		return errors.WithStack(err)
+	}
+	// === [/ Sections ] ===
+
+	fmt.Println(out.String())
+	return nil
+}
+
+// getLibImpsPrinter returns a pretty-printed for library imports.
+func getLibImpsPrinter(file *pe.File, libs []Library) (func(w io.Writer, addr Address, buf []byte) (int, error), error) {
 	// === [ Library imports ] ===
 	libImpsBuf := &bytes.Buffer{}
 	impLibs := make([]Library, len(libs))
@@ -147,43 +196,34 @@ func relink(pePath string, nops AddrRanges) error {
 	sort.Slice(impLibs, less)
 	for _, impLib := range impLibs {
 		if err := dumpLibImps(libImpsBuf, impLib); err != nil {
-			return errors.WithStack(err)
+			return nil, errors.WithStack(err)
 		}
 	}
 	// Relative address of first import entity.
-	var minIATRelAddr uint64
+	var minIATRelAddr Address
 	for _, relAddr := range libRelAddr {
-		iatRelAddr := uint64(relAddr)
+		iatRelAddr := Address(relAddr)
 		if minIATRelAddr == 0 || iatRelAddr < minIATRelAddr {
 			minIATRelAddr = iatRelAddr
 		}
 	}
-	libImpsAddr := file.OptHdr.ImageBase + minIATRelAddr
+	libImpsAddr := Address(file.OptHdr.ImageBase) + minIATRelAddr
 	libImpsSize := 0
 	for _, lib := range libs {
 		// 4 bytes per function and a terminating NULL import entry.
 		libImpsSize += 4 * (len(lib.Funcs) + 1)
 	}
 	// === [/ Library imports ] ===
-
-	// Output sections of PE file.
-	prevSeg := "x_seg"
-	for _, sect := range sects {
-		nopSect(sect, nops)
-		if err := dumpSect(out, sect, prevSeg, libImpsBuf.String(), libImpsAddr, libImpsSize); err != nil {
-			return errors.WithStack(err)
+	f := func(w io.Writer, addr Address, buf []byte) (int, error) {
+		if addr == libImpsAddr {
+			if _, err := libImpsBuf.WriteTo(w); err != nil {
+				return 0, errors.WithStack(err)
+			}
+			return libImpsSize, nil
 		}
-		prevSeg = nasmIdent(sect.Name)
+		return 0, nil
 	}
-	// Output sections footer.
-	const sectPost = "; === [/ Sections ] ============================================================\n\n"
-	if _, err := out.WriteString(sectPost); err != nil {
-		return errors.WithStack(err)
-	}
-	// === [/ Sections ] ===
-
-	fmt.Println(out.String())
-	return nil
+	return f, nil
 }
 
 // parseSects parses the sections of the given PE file into a unified format.
@@ -193,7 +233,7 @@ func parseSects(file *pe.File) []*Section {
 		start := sectHdr.DataOffset
 		end := start + sectHdr.DataSize
 		data := file.Content[start:end]
-		addr := file.OptHdr.ImageBase + uint64(sectHdr.RelAddr)
+		addr := Address(file.OptHdr.ImageBase) + Address(sectHdr.RelAddr)
 		perm := parsePerm(sectHdr.Flags)
 		sect := &Section{
 			Name: sectHdr.Name,

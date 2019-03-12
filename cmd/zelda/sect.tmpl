@@ -1,20 +1,14 @@
 {{ h0 (printf "%s segment" .Name) }}
 
-SECTION {{ .Ident }} vstart={{ printf "0x%08X" .Addr }} follows={{ .PrevSeg }} align=1
+SECTION {{ .Ident }} vstart={{ .Addr }} follows={{ .PrevSeg }} align=1
 
 {{ .Ident }}_off equ {{ .PrevSeg }}_off + {{ .PrevSeg }}.size
 
 {{ h2 (printf "%s section" .Name) }}
 
 {{ .Ident }}:
-{{ with .LibImps }}
-{{ . }}
-{{- end }}
-{{ hexdump .Data }}
-{{ with .BSSData }}
-; Uninitialized data.
-{{ . }}
-{{- end }}
+
+{{ .Content }}
 
 {{ h2End (printf "%s section" .Name) }}
 

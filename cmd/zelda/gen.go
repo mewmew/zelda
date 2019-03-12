@@ -393,15 +393,58 @@ func dumpPltSect(w io.Writer, libs []Library) error {
 	return nil
 }
 
+// genSectContent returns the contents of the given section in NASM syntax,
+// using the formatting functions to pretty-print data.
+func genSectContent(sect *Section, fs ...func(w io.Writer, addr Address, buf []byte) (int, error)) (string, error) {
+	// Initialized data.
+	out := &bytes.Buffer{}
+	addr := sect.Addr
+loop:
+	// TODO: only print the first Size bytes of Data (when len(Data) > Size).
+	// Mark the remaining bytes of Data as padding.
+	for i := 0; i < len(sect.Data); {
+		buf := sect.Data[i:]
+		for _, f := range fs {
+			n, err := f(out, addr, buf)
+			if err != nil {
+				return "", errors.WithStack(err)
+			}
+			if n != 0 {
+				// f pretty-printed n bytes of section contents at the current
+				// address.
+				i += n
+				addr += Address(n)
+				continue loop
+			}
+		}
+		// The current address was not pretty printed.
+		b := sect.Data[i]
+		c := byte('.')
+		if isPrint(b) {
+			c = b
+		}
+		fmt.Fprintf(out, "\tdb      0x%02X ; |%c|\n", b, c)
+		i++
+		addr++
+	}
+	// Uninitialized data.
+	// TODO: use pretty-printer functions also for uninitialized data.
+	if sect.Size > int64(len(sect.Data)) {
+		n := sect.Size - int64(len(sect.Data))
+		out.WriteString("; Uninitialized data.\n")
+		fmt.Fprintf(out, "resb %d\n", n)
+	}
+	return out.String(), nil
+}
+
 // dumpSect outputs the given PE section in NASM syntax and PE library imports,
 // writing to w.
-func dumpSect(w io.Writer, sect *Section, prevSeg string, libImpsBuf string, libImpsAddr uint64, libImpsSize int) error {
+func dumpSect(w io.Writer, sect *Section, prevSeg string, content string) error {
 	funcs := template.FuncMap{
-		"h0":      h0,
-		"h0End":   h0End,
-		"h2":      h2,
-		"h2End":   h2End,
-		"hexdump": hexdump,
+		"h0":    h0,
+		"h0End": h0End,
+		"h2":    h2,
+		"h2End": h2End,
 	}
 	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
 	if err != nil {
@@ -423,32 +466,8 @@ func dumpSect(w io.Writer, sect *Section, prevSeg string, libImpsBuf string, lib
 		"Ident":   nasmIdent(sect.Name),
 		"PrevSeg": prevSeg,
 		"Addr":    sect.Addr,
-		"Data":    sect.Data,
+		"Content": content,
 		"Pad":     pad,
-	}
-	// Add library imports if present in section.
-	sectEndAddr := sect.Addr + uint64(len(sect.Data))
-	libImpsEndAddr := libImpsAddr + uint64(len(libImpsBuf))
-	if sect.Addr <= libImpsAddr && libImpsEndAddr <= sectEndAddr {
-		if sect.Addr != libImpsAddr {
-			// TODO: implement support for library imports in the middle of a
-			// section. Also, implement support for library entries that are
-			// located at separate places in the PE file (one location per
-			// library). Finally, ensure that alignment and padding is correct. Add
-			// sanity check for addresses as we transition from library entries to
-			// hexdump data.
-			panic("support for PE library imports in the middle of section not yet implemented")
-		}
-		data["LibImps"] = libImpsBuf
-		// Skip contents of library imports in hexdump data.
-		data["Data"] = sect.Data[libImpsSize:]
-	}
-	// Add uninitialized data if present in section.
-	if sect.Size > int64(len(sect.Data)) {
-		// Section contains uninitialized data.
-		bssSize := sect.Size - int64(len(sect.Data))
-		bssData := fmt.Sprintf("resb %d", bssSize)
-		data["BSSData"] = bssData
 	}
 	if err := t.Execute(tw, data); err != nil {
 		return errors.WithStack(err)

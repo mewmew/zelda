@@ -12,7 +12,7 @@ import (
 type AddrRanges []AddrRange
 
 // Contains reports whether the address range contains the given address.
-func (as AddrRanges) Contains(addr uint64) bool {
+func (as AddrRanges) Contains(addr Address) bool {
 	for _, a := range as {
 		if a.Contains(addr) {
 			return true
@@ -47,12 +47,14 @@ func (as AddrRanges) String() string {
 
 // AddrRange defines the address range [start, end).
 type AddrRange struct {
-	Start uint64
-	End   uint64
+	// Start address, inclusive.
+	Start Address
+	// End address, exclusive.
+	End Address
 }
 
 // Contains reports whether the address range contains the given address.
-func (a AddrRange) Contains(addr uint64) bool {
+func (a AddrRange) Contains(addr Address) bool {
 	return a.Start <= addr && addr < a.End
 }
 
@@ -62,27 +64,58 @@ func (a *AddrRange) Set(s string) error {
 	if len(parts) != 2 {
 		return errors.Errorf("invalid number of dash-separated parts in address range; expected 2, got %d", len(parts))
 	}
-	startRaw := strings.ToLower(parts[0])
-	endRaw := strings.ToLower(parts[1])
-	start, err := parseHex(startRaw)
-	if err != nil {
+	if err := a.Start.Set(parts[0]); err != nil {
 		return errors.WithStack(err)
 	}
-	end, err := parseHex(endRaw)
-	if err != nil {
+	if err := a.End.Set(parts[1]); err != nil {
 		return errors.WithStack(err)
 	}
-	a.Start = start
-	a.End = end
 	return nil
 }
+
+// String returns the string representation of the address range.
+func (a AddrRange) String() string {
+	return fmt.Sprintf("%s-%s", a.Start, a.End)
+}
+
+// Address is a virtual address, which may be specified in hexadecimal notation.
+// It implements the flag.Value, encoding.TextUnmarshaler and
+// metadata.Unmarshaler interfaces.
+type Address uint64
+
+// Set sets the address based on the given string.
+func (a *Address) Set(s string) error {
+	x, err := parseHex(s)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	*a = Address(x)
+	return nil
+}
+
+// String returns the string representation of the address.
+func (a Address) String() string {
+	return fmt.Sprintf("0x%X", uint64(a))
+}
+
+// UnmarshalText unmarshals the text into a.
+func (a *Address) UnmarshalText(text []byte) error {
+	return a.Set(string(text))
+}
+
+// MarshalText returns the textual representation of a.
+func (a Address) MarshalText() ([]byte, error) {
+	return []byte(a.String()), nil
+}
+
+// ### [ Helper functions ] ####################################################
 
 // parseHex parses the hexadecimal representation of an unsigned integer.
 func parseHex(s string) (uint64, error) {
 	s = strings.ToLower(s)
 	const prefix = "0x"
 	if !strings.HasPrefix(s, prefix) {
-		return 0, errors.Errorf("invalid address %q; missing hexadecimal prefix", s)
+		return 0, errors.Errorf("invalid address %q; missing hexadecimal prefix %q", s, prefix)
 	}
 	s = s[len(prefix):]
 	x, err := strconv.ParseUint(s, 16, 64)
@@ -90,9 +123,4 @@ func parseHex(s string) (uint64, error) {
 		return 0, errors.WithStack(err)
 	}
 	return x, nil
-}
-
-// String returns the string representation of the address range.
-func (a AddrRange) String() string {
-	return fmt.Sprintf("0x%X-0x%X", a.Start, a.End)
 }
