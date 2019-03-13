@@ -199,12 +199,18 @@ func getStaticLibsPrinter(staticLibs []StaticLib) (func(w io.Writer, addr Addres
 	f := func(w io.Writer, addr Address, buf []byte) (int, error) {
 		for _, staticLib := range staticLibs {
 			for _, fn := range staticLib.Funcs {
+				const injectSize = 5
 				if fn.Addr == addr {
+					if _, err := fmt.Fprintf(w, "  .%s:\n", fn.Name); err != nil {
+						return 0, errors.WithStack(err)
+					}
 					if _, err := fmt.Fprintf(w, "\tjmp     plt.%s\n", fn.Name); err != nil {
 						return 0, errors.WithStack(err)
 					}
-					// TODO: figure out how to calculate size of JMP instruction.
-					return 5, nil
+					if _, err := fmt.Fprintf(w, "  times (%d - ($ - .%s)) int3\n", injectSize, fn.Name); err != nil {
+						return 0, errors.WithStack(err)
+					}
+					return injectSize, nil
 				}
 			}
 		}
