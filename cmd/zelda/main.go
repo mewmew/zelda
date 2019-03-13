@@ -27,13 +27,19 @@ func usage() {
 func main() {
 	// Parse command line arguments.
 	var (
+		// interrupt address ranges.
+		ints AddrRanges
 		// nop address ranges.
 		nops AddrRanges
 		// Path to JSON file of statically linked libraries.
 		staticLibsPath string
+		// Address of entry point.
+		entry Address
 	)
 	flag.Usage = usage
+	flag.Var(&ints, "int", `interrupt address ranges (e.g. "0x10-0x20,0x33-0x37")`)
 	flag.Var(&nops, "nop", `nop address ranges (e.g. "0x10-0x20,0x33-0x37")`)
+	flag.Var(&entry, "entry", "address of entry point")
 	flag.StringVar(&staticLibsPath, "static_libs", "", "path to JSON file of statically linked libraries")
 	flag.Parse()
 
@@ -45,7 +51,7 @@ func main() {
 		}
 	}
 	for _, pePath := range flag.Args() {
-		if err := relink(pePath, nops, staticLibs); err != nil {
+		if err := relink(pePath, entry, ints, nops, staticLibs); err != nil {
 			log.Fatalf("%+v", err)
 		}
 	}
@@ -54,7 +60,7 @@ func main() {
 // relink relinks the given PE file into a corresponding ELF file. If specified,
 // the nop address ranges are nop'ed out, and the statically linked libraries
 // are replaced with dynamic libraries.
-func relink(pePath string, nops AddrRanges, staticLibs []StaticLib) error {
+func relink(pePath string, entry Address, ints, nops AddrRanges, staticLibs []StaticLib) error {
 	// Parse PE file.
 	file, err := pe.ParseFile(pePath)
 	if err != nil {
@@ -86,7 +92,9 @@ func relink(pePath string, nops AddrRanges, staticLibs []StaticLib) error {
 		return errors.WithStack(err)
 	}
 	// Output ELF file header.
-	entry := file.OptHdr.ImageBase + uint64(file.OptHdr.EntryRelAddr)
+	if entry == 0 {
+		entry = Address(file.OptHdr.ImageBase) + Address(file.OptHdr.EntryRelAddr)
+	}
 	if err := dumpFileHdr(out, entry); err != nil {
 		return errors.WithStack(err)
 	}
@@ -174,6 +182,7 @@ func relink(pePath string, nops AddrRanges, staticLibs []StaticLib) error {
 	fs = append(fs, staticLibsPrinter)
 	for _, sect := range sects {
 		nopSect(sect, nops)
+		intSect(sect, ints)
 		content, err := genSectContent(sect, fs...)
 		if err != nil {
 			return errors.WithStack(err)
@@ -399,6 +408,17 @@ func nopSect(sect *Section, nops AddrRanges) {
 	}
 	for _, nop := range nops {
 		sect.fill(nop, b)
+	}
+}
+
+// intSect fills the parts of the section contained within the given address
+// ranges with interrupt instructions.
+func intSect(sect *Section, ints AddrRanges) {
+	if sect.Perm&PermX != 0 {
+		b := byte(0xCC) // INT3 instruction
+		for _, i := range ints {
+			sect.fill(i, b)
+		}
 	}
 }
 
