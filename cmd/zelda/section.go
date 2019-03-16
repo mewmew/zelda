@@ -35,9 +35,29 @@ func (sect *Section) fill(a AddrRange, b byte) {
 	for addr := a.Start; addr < a.End; addr++ {
 		if start <= addr && addr < end {
 			pos := addr - sect.Addr
-			log.Printf("fill address %s with 0x%0X", addr, b)
+			log.Printf("fill address %s with 0x%02X", addr, b)
 			sect.Data[pos] = b
 		}
+	}
+}
+
+// replace replaces the contents at the given address with the specified bytes buffer.
+func (sect *Section) replace(addr Address, buf []byte) {
+	sectStart := sect.Addr
+	sectEnd := sectStart + Address(len(sect.Data))
+	bufStart := addr
+	bufEnd := addr + Address(len(buf))
+	if bufStart > sectEnd {
+		return
+	}
+	if bufEnd <= sectStart {
+		return
+	}
+	offset := int64(bufStart - sectStart)
+	for i, b := range buf {
+		a := bufStart + Address(i)
+		log.Printf("replace byte at address %s with 0x%02X", a, b)
+		sect.Data[offset+int64(i)] = b
 	}
 }
 

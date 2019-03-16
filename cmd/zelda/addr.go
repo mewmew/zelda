@@ -1,12 +1,74 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
 )
+
+// --- [ Binary replacements ] -------------------------------------------------
+
+// Replacements is a set of binary replacements.
+type Replacements []Replacement
+
+// Set sets the binary replacements based on the given string.
+func (rs *Replacements) Set(s string) error {
+	parts := strings.Split(s, ",")
+	for _, part := range parts {
+		var r Replacement
+		part = strings.TrimSpace(part)
+		if err := r.Set(part); err != nil {
+			return errors.WithStack(err)
+		}
+		*rs = append(*rs, r)
+	}
+	return nil
+}
+
+// String returns the string representation of the binary replacements.
+func (rs Replacements) String() string {
+	var ss []string
+	for _, r := range rs {
+		s := r.String()
+		ss = append(ss, s)
+	}
+	return strings.Join(ss, ",")
+}
+
+// Replacement is a binary replacement specified by address.
+type Replacement struct {
+	// Start address of binary replacement.
+	Addr Address
+	// New content.
+	Buf []byte
+}
+
+// Set sets the binary replacement based on the given string.
+func (r *Replacement) Set(s string) error {
+	parts := strings.Split(s, ":")
+	if len(parts) != 2 {
+		return errors.Errorf("invalid number of dash-separated parts in binary replacement; expected 2, got %d", len(parts))
+	}
+	if err := r.Addr.Set(parts[0]); err != nil {
+		return errors.WithStack(err)
+	}
+	buf, err := hex.DecodeString(parts[1])
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	r.Buf = buf
+	return nil
+}
+
+// String returns the string representation of the binary replacement.
+func (r Replacement) String() string {
+	return fmt.Sprintf("%s:%X", r.Addr, r.Buf)
+}
+
+// --- [ Address ranges ] ------------------------------------------------------
 
 // AddrRanges is a set of address ranges.
 type AddrRanges []AddrRange
