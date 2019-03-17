@@ -26,6 +26,8 @@ func usage() {
 func main() {
 	// Parse command line arguments.
 	var (
+		// Use 64-bit architecture (default 32-bit).
+		arch64 bool
 		// Address of entry point.
 		entry Address
 		// interrupt address ranges.
@@ -38,6 +40,7 @@ func main() {
 		staticLibsPath string
 	)
 	flag.Usage = usage
+	flag.BoolVar(&arch64, "64", false, "64-bit (default 32-bit)")
 	flag.Var(&entry, "entry", "address of entry point")
 	flag.Var(&ints, "int", `interrupt address ranges (e.g. "0x10-0x20,0x33-0x37")`)
 	flag.Var(&nops, "nop", `nop address ranges (e.g. "0x10-0x20,0x33-0x37")`)
@@ -53,7 +56,7 @@ func main() {
 		}
 	}
 	for _, pePath := range flag.Args() {
-		if err := relink(pePath, entry, ints, nops, replaces, staticLibs); err != nil {
+		if err := relink(pePath, arch64, entry, ints, nops, replaces, staticLibs); err != nil {
 			log.Fatalf("%+v", err)
 		}
 	}
@@ -62,7 +65,7 @@ func main() {
 // relink relinks the given PE file into a corresponding ELF file. If specified,
 // the nop address ranges are nop'ed out, and the statically linked libraries
 // are replaced with dynamic libraries.
-func relink(pePath string, entry Address, ints, nops AddrRanges, replaces Replacements, staticLibs []StaticLib) error {
+func relink(pePath string, arch64 bool, entry Address, ints, nops AddrRanges, replaces Replacements, staticLibs []StaticLib) error {
 	// Parse PE file.
 	file, err := pe.ParseFile(pePath)
 	if err != nil {
@@ -90,20 +93,20 @@ func relink(pePath string, entry Address, ints, nops AddrRanges, replaces Replac
 	out := &bytes.Buffer{}
 	// TODO: make base address configurable from command line.
 	const base = 0x80400000 // use 0x8XXXXXXX to prevent conflict with 0x0XXXXXXX
-	if err := dumpRSegPre(out, base); err != nil {
+	if err := dumpRSegPre(out, arch64, base); err != nil {
 		return errors.WithStack(err)
 	}
 	// Output ELF file header.
 	if entry == 0 {
 		entry = Address(file.OptHdr.ImageBase) + Address(file.OptHdr.EntryRelAddr)
 	}
-	if err := dumpFileHdr(out, entry); err != nil {
+	if err := dumpFileHdr(out, arch64, entry); err != nil {
 		return errors.WithStack(err)
 	}
 	// Get ELF program headers for the sections.
 	progHdrs := elfProgHdrs(sects)
 	// Output ELF program headers.
-	if err := dumpProgHdrs(out, progHdrs); err != nil {
+	if err := dumpProgHdrs(out, arch64, progHdrs); err != nil {
 		return errors.WithStack(err)
 	}
 	// Output sections.
@@ -114,11 +117,11 @@ func relink(pePath string, entry Address, ints, nops AddrRanges, replaces Replac
 		return errors.WithStack(err)
 	}
 	// .interp
-	if err := dumpInterpSect(out); err != nil {
+	if err := dumpInterpSect(out, arch64); err != nil {
 		return errors.WithStack(err)
 	}
 	// .dynamic
-	if err := dumpDynamicSect(out, libs); err != nil {
+	if err := dumpDynamicSect(out, arch64, libs); err != nil {
 		return errors.WithStack(err)
 	}
 	// .dynstr
@@ -130,7 +133,7 @@ func relink(pePath string, entry Address, ints, nops AddrRanges, replaces Replac
 		return errors.WithStack(err)
 	}
 	// .rel.plt
-	if err := dumpRelPltSect(out, libs); err != nil {
+	if err := dumpRelPltSect(out, arch64, libs); err != nil {
 		return errors.WithStack(err)
 	}
 	// Output footer of read-only segment.
@@ -145,7 +148,7 @@ func relink(pePath string, entry Address, ints, nops AddrRanges, replaces Replac
 		return errors.WithStack(err)
 	}
 	// .got.plt
-	if err := dumpGotPltSect(out, libs); err != nil {
+	if err := dumpGotPltSect(out, arch64, libs); err != nil {
 		return errors.WithStack(err)
 	}
 	// Output footer of read-write segment.
@@ -160,7 +163,7 @@ func relink(pePath string, entry Address, ints, nops AddrRanges, replaces Replac
 		return errors.WithStack(err)
 	}
 	// .plt
-	if err := dumpPltSect(out, libs); err != nil {
+	if err := dumpPltSect(out, arch64, libs); err != nil {
 		return errors.WithStack(err)
 	}
 	// Output footer of executable segment.

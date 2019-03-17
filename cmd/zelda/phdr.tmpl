@@ -1,3 +1,5 @@
+{{ $root := . -}}
+
 ; === [ Program headers ] ======================================================
 
 ; Segment types.
@@ -14,11 +16,21 @@ phdr_off equ phdr - BASE_R_SEG
 
 phdr:
 
-{{- range $i, $v := . }}
+{{- range $i, $v := .ProgHdrs }}
 
 {{ h2 .Title }}
 
   .{{ .Name }}:
+{{- if $root.Arch64 }}
+	dd      {{ .Type }}	; type: Segment type
+	dd      {{ .Flags }}	; flags: Segment flags
+	dq      {{ .Name }}_off	; offset: Segment file offset
+	dq      {{ .Name }}	; vaddr: Segment virtual address
+	dq      {{ .Name }}	; paddr: Segment physical address
+	dq      {{ .Name }}.size	; filesz: Segment size in file
+	dq      {{ .Name }}.size	; memsz: Segment size in memory
+	dq      {{ .Align }}	; align: Segment alignment
+{{- else }}
 	dd      {{ .Type }}	; type: Segment type
 	dd      {{ .Name }}_off	; offset: Segment file offset
 	dd      {{ .Name }}	; vaddr: Segment virtual address
@@ -27,6 +39,7 @@ phdr:
 	dd      {{ .Name }}.size	; memsz: Segment size in memory
 	dd      {{ .Flags }}	; flags: Segment flags
 	dd      {{ .Align }}	; align: Segment alignment
+{{- end }}
 
 {{- if eq $i 0 }}
 

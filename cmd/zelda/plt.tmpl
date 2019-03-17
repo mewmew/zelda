@@ -1,17 +1,32 @@
+{{ $root := . -}}
+
 ; --- [ .plt section ] ---------------------------------------------------------
 
 plt:
 
   .resolve:
+{{- if .Arch64 }}
+	push    qword [rel got_plt.link_map]
+	jmp     [rel got_plt.dl_runtime_resolve]
+{{- else }}
 	push    dword [got_plt.link_map]
 	jmp     [got_plt.dl_runtime_resolve]
-{{ range . }}
+{{- end }}
+{{ range .Libs }}
 ; {{ .Filename }}
 	{{- range .Funcs }}
   .{{ . }}:
+{{- if $root.Arch64 }}
+	jmp     [rel got_plt.{{ . }}]
+{{- else }}
 	jmp     [got_plt.{{ . }}]
+{{- end }}
   .resolve_{{ . }}:
+{{- if $root.Arch64 }}
+	push    qword dynsym.{{ . }}_idx
+{{- else }}
 	push    dword rel_plt.{{ . }}_off
+{{- end }}
 	jmp     near .resolve
 	{{- end }}
 {{ end }}

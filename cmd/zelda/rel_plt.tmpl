@@ -1,23 +1,47 @@
+{{ $root := . -}}
+
+{{- if .Arch64 -}}
+; --- [ .rela.plt section ] ----------------------------------------------------
+{{- else -}}
 ; --- [ .rel.plt section ] -----------------------------------------------------
+{{- end }}
 
 ; Relocation types.
 R_386_JMP_SLOT equ 7 ; Set GOT entry to code address.
 
+{{- if .Arch64 }}
+rela_plt:
+{{- else }}
 rel_plt:
-{{ range . }}
+{{- end }}
+{{ range .Libs }}
 ; {{ .Filename }}
 	{{- range .Funcs }}
   .{{ . }}:
+{{- if $root.Arch64 }}
+	dq      got_plt.{{ . }}	; offset: Location to be relocated.
+	dq      R_386_JMP_SLOT | dynsym.{{ . }}_idx<<32	; info: Relocation type and symbol index.
+	dq      0	; addend: Addend.
+{{- else }}
 	dd      got_plt.{{ . }}	; offset: Location to be relocated.
 	dd      R_386_JMP_SLOT | dynsym.{{ . }}_idx<<8	; info: Relocation type and symbol index.
+{{- end }}
 	{{- end }}
 {{ end }}
 
-{{- range . }}
+{{- range .Libs }}
 ; {{ .Filename }}
 	{{- range .Funcs }}
+{{- if $root.Arch64 }}
+.{{ . }}_off	equ .{{ . }} - rela_plt
+{{- else }}
 .{{ . }}_off	equ .{{ . }} - rel_plt
+{{- end }}
 	{{- end }}
 {{ end }}
+{{- if .Arch64 }}
+; --- [/ .rela.plt section ] ---------------------------------------------------
+{{- else }}
 ; --- [/ .rel.plt section ] ----------------------------------------------------
+{{- end }}
 

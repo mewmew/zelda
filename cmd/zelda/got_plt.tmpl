@@ -1,20 +1,38 @@
+{{ $root := . -}}
+
 ; --- [ .got.plt section ] -----------------------------------------------------
 
 got_plt:
 
   .dynamic:
+{{- if .Arch64 }}
+	dq      dynamic
+{{- else }}
 	dd      dynamic
+{{- end }}
 
   .link_map:
+{{- if .Arch64 }}
+	dq      0
+{{- else }}
 	dd      0
+{{- end }}
 
   .dl_runtime_resolve:
+{{- if .Arch64 }}
+	dq      0
+{{- else }}
 	dd      0
-{{ range . }}
+{{- end }}
+{{ range .Libs }}
 ; {{ .Filename }}
 	{{- range .Funcs }}
   .{{ . }}:
+{{- if $root.Arch64 }}
+	dq      plt.resolve_{{ . }}
+{{- else }}
 	dd      plt.resolve_{{ . }}
+{{- end }}
 	{{- end }}
 {{ end }}
 ; --- [/ .got.plt section ] ----------------------------------------------------

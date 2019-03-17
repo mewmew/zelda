@@ -2,31 +2,48 @@
 
 ; ELF classes.
 ELFCLASS32 equ 1 ; 32-bit architecture.
+ELFCLASS64 equ 2 ; 64-bit architecture.
 
 ; Data encodings.
 ELFDATA2LSB equ 1 ; 2's complement little-endian.
 
 ; Object file types.
 ET_EXEC equ 2 ; Executable.
+ET_DYN  equ 3 ; Shared object.
 
 ; CPU architectures.
-EM_386 equ 3 ; Intel i386.
+EM_386    equ 3  ; Intel i386.
+EM_X86_64 equ 62 ; AMD x86-64.
 
 _text.start equ {{ .Entry }}
 
 ehdr:
 
 	db      0x7F, "ELF"	; ident.magic: ELF magic number.
+{{- if .Arch64 }}
+	db      ELFCLASS64	; ident.class: File class.
+{{- else }}
 	db      ELFCLASS32	; ident.class: File class.
+{{- end }}
 	db      ELFDATA2LSB	; ident.data: Data encoding.
 	db      1	; ident.version: ELF header version.
 	db      0, 0, 0, 0, 0, 0, 0, 0, 0	; ident.pad: Padding.
 	dw      ET_EXEC	; type: File type.
+{{- if .Arch64 }}
+	dw      EM_X86_64	; machine: Machine architecture.
+{{- else }}
 	dw      EM_386	; machine: Machine architecture.
+{{- end }}
 	dd      1	; version: ELF format version.
+{{- if .Arch64 }}
+	dq      _text.start	; entry: Entry point.
+	dq      phdr_off	; phoff: Program header file offset.
+	dq      0	; shoff: Section header file offset.
+{{- else }}
 	dd      _text.start	; entry: Entry point.
 	dd      phdr_off	; phoff: Program header file offset.
 	dd      0	; shoff: Section header file offset.
+{{- end }}
 	dd      0	; flags: Architecture-specific flags.
 	dw      ehdr.size	; ehsize: Size of ELF header in bytes.
 	dw      phdr.entsize	; phentsize: Size of program header entry.

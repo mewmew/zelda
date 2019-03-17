@@ -18,7 +18,7 @@ import (
 
 // dumpFileHdr outputs the ELF file header in NASM syntax based on the given
 // entry point address, writing to w.
-func dumpFileHdr(w io.Writer, entry Address) error {
+func dumpFileHdr(w io.Writer, arch64 bool, entry Address) error {
 	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
 	if err != nil {
 		return errors.WithStack(err)
@@ -30,8 +30,9 @@ func dumpFileHdr(w io.Writer, entry Address) error {
 		return errors.WithStack(err)
 	}
 	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
-	data := map[string]Address{
-		"Entry": entry,
+	data := map[string]interface{}{
+		"Arch64": arch64,
+		"Entry":  entry,
 	}
 	if err := t.Execute(tw, data); err != nil {
 		return errors.WithStack(err)
@@ -60,7 +61,7 @@ type ProgHeader struct {
 
 // dumpProgHdrs outputs the ELF program headers in NASM syntax based on the
 // given sections, writing to w.
-func dumpProgHdrs(w io.Writer, progHdrs []ProgHeader) error {
+func dumpProgHdrs(w io.Writer, arch64 bool, progHdrs []ProgHeader) error {
 	funcs := template.FuncMap{
 		"h2": h2,
 	}
@@ -75,7 +76,11 @@ func dumpProgHdrs(w io.Writer, progHdrs []ProgHeader) error {
 		return errors.WithStack(err)
 	}
 	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
-	if err := t.Execute(tw, progHdrs); err != nil {
+	data := map[string]interface{}{
+		"Arch64":   arch64,
+		"ProgHdrs": progHdrs,
+	}
+	if err := t.Execute(tw, data); err != nil {
 		return errors.WithStack(err)
 	}
 	if err := tw.Flush(); err != nil {
@@ -88,7 +93,7 @@ func dumpProgHdrs(w io.Writer, progHdrs []ProgHeader) error {
 
 // dumpRSegPre outputs the header of a read-only segment in NASM syntax based on
 // the given base address, writing to w.
-func dumpRSegPre(w io.Writer, base uint64) error {
+func dumpRSegPre(w io.Writer, arch64 bool, base uint64) error {
 	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
 	if err != nil {
 		return errors.WithStack(err)
@@ -100,8 +105,9 @@ func dumpRSegPre(w io.Writer, base uint64) error {
 		return errors.WithStack(err)
 	}
 	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
-	data := map[string]string{
-		"Base": fmt.Sprintf("0x%08X", base),
+	data := map[string]interface{}{
+		"Arch64": arch64,
+		"Base":   fmt.Sprintf("0x%08X", base),
 	}
 	if err := t.Execute(tw, data); err != nil {
 		return errors.WithStack(err)
@@ -232,7 +238,7 @@ func dumpXSegPost(w io.Writer) error {
 // --- [ .interp section ] -----------------------------------------------------
 
 // dumpInterpSect outputs the .interp section in NASM syntax, writing to w.
-func dumpInterpSect(w io.Writer) error {
+func dumpInterpSect(w io.Writer, arch64 bool) error {
 	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
 	if err != nil {
 		return errors.WithStack(err)
@@ -244,7 +250,10 @@ func dumpInterpSect(w io.Writer) error {
 		return errors.WithStack(err)
 	}
 	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
-	if err := t.Execute(tw, nil); err != nil {
+	data := map[string]interface{}{
+		"Arch64": arch64,
+	}
+	if err := t.Execute(tw, data); err != nil {
 		return errors.WithStack(err)
 	}
 	if err := tw.Flush(); err != nil {
@@ -257,7 +266,7 @@ func dumpInterpSect(w io.Writer) error {
 
 // dumpDynamicSect outputs the .dynamic section in NASM syntax based on the
 // given imported libraries, writing to w.
-func dumpDynamicSect(w io.Writer, libs []Library) error {
+func dumpDynamicSect(w io.Writer, arch64 bool, libs []Library) error {
 	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
 	if err != nil {
 		return errors.WithStack(err)
@@ -269,7 +278,11 @@ func dumpDynamicSect(w io.Writer, libs []Library) error {
 		return errors.WithStack(err)
 	}
 	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
-	if err := t.Execute(tw, libs); err != nil {
+	data := map[string]interface{}{
+		"Arch64": arch64,
+		"Libs":   libs,
+	}
+	if err := t.Execute(tw, data); err != nil {
 		return errors.WithStack(err)
 	}
 	if err := tw.Flush(); err != nil {
@@ -326,7 +339,7 @@ func dumpDynsymSect(w io.Writer, libs []Library) error {
 
 // dumpRelPltSect outputs the .rel.plt section in NASM syntax based on the given
 // imported libraries, writing to w.
-func dumpRelPltSect(w io.Writer, libs []Library) error {
+func dumpRelPltSect(w io.Writer, arch64 bool, libs []Library) error {
 	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
 	if err != nil {
 		return errors.WithStack(err)
@@ -338,7 +351,11 @@ func dumpRelPltSect(w io.Writer, libs []Library) error {
 		return errors.WithStack(err)
 	}
 	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
-	if err := t.Execute(tw, libs); err != nil {
+	data := map[string]interface{}{
+		"Arch64": arch64,
+		"Libs":   libs,
+	}
+	if err := t.Execute(tw, data); err != nil {
 		return errors.WithStack(err)
 	}
 	if err := tw.Flush(); err != nil {
@@ -349,7 +366,7 @@ func dumpRelPltSect(w io.Writer, libs []Library) error {
 
 // dumpGotPltSect outputs the .got.plt section in NASM syntax based on the given
 // imported libraries, writing to w.
-func dumpGotPltSect(w io.Writer, libs []Library) error {
+func dumpGotPltSect(w io.Writer, arch64 bool, libs []Library) error {
 	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
 	if err != nil {
 		return errors.WithStack(err)
@@ -361,7 +378,11 @@ func dumpGotPltSect(w io.Writer, libs []Library) error {
 		return errors.WithStack(err)
 	}
 	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
-	if err := t.Execute(tw, libs); err != nil {
+	data := map[string]interface{}{
+		"Arch64": arch64,
+		"Libs":   libs,
+	}
+	if err := t.Execute(tw, data); err != nil {
 		return errors.WithStack(err)
 	}
 	if err := tw.Flush(); err != nil {
@@ -372,7 +393,7 @@ func dumpGotPltSect(w io.Writer, libs []Library) error {
 
 // dumpPltSect outputs the .plt section in NASM syntax based on the given
 // imported libraries, writing to w.
-func dumpPltSect(w io.Writer, libs []Library) error {
+func dumpPltSect(w io.Writer, arch64 bool, libs []Library) error {
 	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
 	if err != nil {
 		return errors.WithStack(err)
@@ -384,7 +405,11 @@ func dumpPltSect(w io.Writer, libs []Library) error {
 		return errors.WithStack(err)
 	}
 	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
-	if err := t.Execute(tw, libs); err != nil {
+	data := map[string]interface{}{
+		"Arch64": arch64,
+		"Libs":   libs,
+	}
+	if err := t.Execute(tw, data); err != nil {
 		return errors.WithStack(err)
 	}
 	if err := tw.Flush(); err != nil {

@@ -1,3 +1,5 @@
+{{ $root := . -}}
+
 ; --- [ .dynamic section ] -----------------------------------------------------
 
 ; Dynamic tags.
@@ -8,7 +10,11 @@ DT_STRTAB equ 5  ; Address of string table.
 DT_SYMTAB equ 6  ; Address of symbol table.
 DT_JMPREL equ 23 ; Address of PLT relocations.
 
+{{- if .Arch64 }}
+dynamic_align equ 8
+{{- else }}
 dynamic_align equ 4
+{{- end }}
 
 align dynamic_align, db 0x00
 
@@ -17,34 +23,64 @@ dynamic_off equ dynamic - BASE_R_SEG
 dynamic:
 
   .strtab:
+{{- if .Arch64 }}
+	dq      DT_STRTAB	; tag: Entry type.
+	dq      dynstr	; val: Integer/Address value.
+{{- else }}
 	dd      DT_STRTAB	; tag: Entry type.
 	dd      dynstr	; val: Integer/Address value.
+{{- end }}
 
 .entsize equ $ - dynamic
 
   .symtab:
+{{- if .Arch64 }}
+	dq      DT_SYMTAB	; tag: Entry type.
+	dq      dynsym	; val: Integer/Address value.
+{{- else }}
 	dd      DT_SYMTAB	; tag: Entry type.
 	dd      dynsym	; val: Integer/Address value.
+{{- end }}
 
   .jmprel:
+{{- if .Arch64 }}
+	dq      DT_JMPREL	; tag: Entry type.
+	dq      rela_plt	; val: Integer/Address value.
+{{- else }}
 	dd      DT_JMPREL	; tag: Entry type.
 	dd      rel_plt	; val: Integer/Address value.
+{{- end }}
 
   .pltgot:
+{{- if .Arch64 }}
+	dq      DT_PLTGOT	; tag: Entry type.
+	dq      got_plt	; val: Integer/Address value.
+{{- else }}
 	dd      DT_PLTGOT	; tag: Entry type.
 	dd      got_plt	; val: Integer/Address value.
+{{- end }}
 
-{{- range . }}
+{{- range .Libs }}
 
   .{{ .Name }}:
+{{- if $root.Arch64 }}
+	dq      DT_NEEDED	; tag: Entry type.
+	dq      dynstr.{{ .Name }}_off	; val: Integer/Address value.
+{{- else }}
 	dd      DT_NEEDED	; tag: Entry type.
 	dd      dynstr.{{ .Name }}_off	; val: Integer/Address value.
+{{- end }}
 
 {{- end }}
 
   .null:
+{{- if .Arch64 }}
+	dq      DT_NULL	; tag: Entry type.
+	dq      0	; val: Integer/Address value.
+{{- else }}
 	dd      DT_NULL	; tag: Entry type.
 	dd      0	; val: Integer/Address value.
+{{- end }}
 
 .size equ $ - dynamic
 

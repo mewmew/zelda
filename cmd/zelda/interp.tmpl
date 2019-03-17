@@ -4,7 +4,11 @@ interp_off equ interp - BASE_R_SEG
 
 interp:
 
+{{- if .Arch64 }}
+	db      "/lib64/ld-linux-x86-64.so.2", 0
+{{- else }}
 	db      "/lib/ld-linux.so.2", 0
+{{- end }}
 
 .size equ $ - interp
 
