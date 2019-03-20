@@ -1,0 +1,27 @@
+; --- [ Symbol hash table ] ----------------------------------------------------
+
+; Symbol table indicies.
+STN_UNDEF equ 0 ; Undefined symbol table index.
+
+hash_off equ $ - BASE_R_SEG
+
+hash:
+
+; ref: https://flapenguin.me/2017/04/24/elf-lookup-dt-hash/
+; ref: https://www.gabriel.urdhr.fr/2015/09/28/elf-file-format/#hash-tables
+
+; Linear search "hash" table.
+  .header:
+	dd      1            ; nbucket
+	dd      dynsym.count ; nchain
+
+  .buckets:
+	dd      dynsym.count-1 ; -> last entry in chain
+
+  .chains:
+{{- range $i, $v := .SymbolIndicies }}
+	dd      {{ . }}	; index {{ $i }} -> index {{ $v }}
+{{- end }}
+
+; --- [/ Symbol hash table ] ---------------------------------------------------
+

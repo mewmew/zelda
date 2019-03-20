@@ -1,9 +1,13 @@
 ; --- [ .got.plt section ] -----------------------------------------------------
 
+got_plt_off equ rw_seg_off + ($ - $$)
+
 got_plt:
 
   .dynamic:
 	dd      dynamic
+
+got_plt.entsize equ $ - got_plt
 
   .link_map:
 	dd      0
@@ -17,5 +21,8 @@ got_plt:
 	dd      plt.resolve_{{ . }}
 	{{- end }}
 {{ end }}
+
+got_plt.size equ $ - got_plt
+
 ; --- [/ .got.plt section ] ----------------------------------------------------
 

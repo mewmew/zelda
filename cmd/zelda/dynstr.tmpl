@@ -1,7 +1,17 @@
 ; --- [ .dynstr section ] ------------------------------------------------------
 
+dynstr_off equ $ - BASE_R_SEG
+
 dynstr:
-{{ range . }}
+  .null:
+	db      0
+{{- with .Exports }}
+{{- range . }}
+  .{{ .Name }}:
+	db      "{{ .Name }}", 0
+{{- end }}
+{{- end }}
+{{ range .Libs }}
 ; {{ .Filename }}
   .{{ .Name }}:
 	db      "{{ .Filename }}", 0
@@ -10,13 +20,21 @@ dynstr:
 	db      "{{ . }}", 0
 	{{- end }}
 {{ end }}
+.null_off equ .null - dynstr
 
+{{- with .Exports }}
 {{- range . }}
+.{{ .Name }}_off	equ .{{ .Name }} - dynstr
+{{- end }}
+{{- end }}
+{{- range .Libs }}
 ; {{ .Filename }}
 .{{ .Name }}_off	equ .{{ .Name }} - dynstr
 	{{- range .Funcs }}
 .{{ . }}_off	equ .{{ . }} - dynstr
 	{{- end }}
 {{ end }}
+dynstr.size equ $ - dynstr
+
 ; --- [/ .dynstr section ] -----------------------------------------------------
 

@@ -28,6 +28,8 @@ func main() {
 	var (
 		// Address of entry point.
 		entry Address
+		// Path to JSON file of exported symbols.
+		exportsPath string
 		// interrupt address ranges.
 		ints AddrRanges
 		// nop address ranges.
@@ -39,12 +41,20 @@ func main() {
 	)
 	flag.Usage = usage
 	flag.Var(&entry, "entry", "address of entry point")
+	flag.StringVar(&exportsPath, "export", "", "path to JSON file of exported symbols")
 	flag.Var(&ints, "int", `interrupt address ranges (e.g. "0x10-0x20,0x33-0x37")`)
 	flag.Var(&nops, "nop", `nop address ranges (e.g. "0x10-0x20,0x33-0x37")`)
 	flag.Var(&replaces, "replace", `binary replacements by address (e.g. "0x10:DEAD,0x20:BEEF")`)
 	flag.StringVar(&staticLibsPath, "static_libs", "", "path to JSON file of statically linked libraries")
 	flag.Parse()
 
+	// Parse JSON file of exported symbols.
+	var exports []Export
+	if len(exportsPath) > 0 {
+		if err := jsonutil.ParseFile(exportsPath, &exports); err != nil {
+			log.Fatalf("%+v", err)
+		}
+	}
 	// Parse JSON file of statically linked functions.
 	var staticLibs []StaticLib
 	if len(staticLibsPath) > 0 {
@@ -53,7 +63,7 @@ func main() {
 		}
 	}
 	for _, pePath := range flag.Args() {
-		if err := relink(pePath, entry, ints, nops, replaces, staticLibs); err != nil {
+		if err := relink(pePath, entry, ints, nops, replaces, exports, staticLibs); err != nil {
 			log.Fatalf("%+v", err)
 		}
 	}
@@ -62,7 +72,7 @@ func main() {
 // relink relinks the given PE file into a corresponding ELF file. If specified,
 // the nop address ranges are nop'ed out, and the statically linked libraries
 // are replaced with dynamic libraries.
-func relink(pePath string, entry Address, ints, nops AddrRanges, replaces Replacements, staticLibs []StaticLib) error {
+func relink(pePath string, entry Address, ints, nops AddrRanges, replaces Replacements, exports []Export, staticLibs []StaticLib) error {
 	// Parse PE file.
 	file, err := pe.ParseFile(pePath)
 	if err != nil {
@@ -97,7 +107,8 @@ func relink(pePath string, entry Address, ints, nops AddrRanges, replaces Replac
 	if entry == 0 {
 		entry = Address(file.OptHdr.ImageBase) + Address(file.OptHdr.EntryRelAddr)
 	}
-	if err := dumpFileHdr(out, entry); err != nil {
+	isSharedLib := len(exports) > 0
+	if err := dumpFileHdr(out, entry, isSharedLib); err != nil {
 		return errors.WithStack(err)
 	}
 	// Get ELF program headers for the sections.
@@ -117,16 +128,22 @@ func relink(pePath string, entry Address, ints, nops AddrRanges, replaces Replac
 	if err := dumpInterpSect(out); err != nil {
 		return errors.WithStack(err)
 	}
+	if isSharedLib {
+		// .hash
+		if err := dumpHashSect(out, exports); err != nil {
+			return errors.WithStack(err)
+		}
+	}
 	// .dynamic
-	if err := dumpDynamicSect(out, libs); err != nil {
+	if err := dumpDynamicSect(out, libs, exports); err != nil {
 		return errors.WithStack(err)
 	}
 	// .dynstr
-	if err := dumpDynstrSect(out, libs); err != nil {
+	if err := dumpDynstrSect(out, libs, exports); err != nil {
 		return errors.WithStack(err)
 	}
 	// .dynsym
-	if err := dumpDynsymSect(out, libs); err != nil {
+	if err := dumpDynsymSect(out, libs, exports); err != nil {
 		return errors.WithStack(err)
 	}
 	// .rel.plt
@@ -195,12 +212,24 @@ func relink(pePath string, entry Address, ints, nops AddrRanges, replaces Replac
 		}
 		prevSeg = nasmIdent(sect.Name)
 	}
+
+	// .shstrtab section.
+	if err := dumpShstrtabSect(out, prevSeg, sects); err != nil {
+		return errors.WithStack(err)
+	}
+
 	// Output sections footer.
 	const sectPost = "; === [/ Sections ] ============================================================\n\n"
 	if _, err := out.WriteString(sectPost); err != nil {
 		return errors.WithStack(err)
 	}
 	// === [/ Sections ] ===
+
+	// === [ Section headers ] ===
+	if err := dumpSectHdrs(out, sects); err != nil {
+		return errors.WithStack(err)
+	}
+	// === [/ Section headers ] ===
 
 	fmt.Println(out.String())
 	return nil

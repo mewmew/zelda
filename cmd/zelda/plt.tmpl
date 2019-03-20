@@ -1,5 +1,7 @@
 ; --- [ .plt section ] ---------------------------------------------------------
 
+plt_off equ x_seg_off + ($ - $$)
+
 plt:
 
   .resolve:
@@ -15,5 +17,8 @@ plt:
 	jmp     near .resolve
 	{{- end }}
 {{ end }}
+
+plt.size equ $ - plt
+
 ; --- [/ .plt section ] --------------------------------------------------------
 

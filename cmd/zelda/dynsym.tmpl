@@ -1,18 +1,48 @@
 ; --- [ .dynsym section ] ------------------------------------------------------
 
 ; Symbol bindings.
-STB_GLOBAL equ 1 ; Global symbol.
+STB_LOCAL  equ 0 ; Local symbol
+STB_GLOBAL equ 1 ; Global symbol
 
 ; Symbol types.
-STT_FUNC equ 2 ; Function.
+STT_NOTYPE equ 0 ; Unspecified type.
+STT_FUNC   equ 2 ; Function.
 
 ; Symbol visibility.
 STV_DEFAULT equ 0 ; Default visibility.
 
+dynsym_off equ $ - BASE_R_SEG
+
 dynsym:
-{{ range $i, $lib := . }}
+  .null:
+	dd      dynstr.null_off           ; name: String table index of name.
+	dd      0                         ; value: Symbol value.
+	dd      0                         ; size: Size of associated object.
+	db      STT_NOTYPE | STB_LOCAL<<4 ; info: Type and binding information.
+	db      STV_DEFAULT               ; other: Reserved (not used).
+	dw      0                         ; shndx: Section index of symbol.
+
+.entsize equ $ - dynsym
+{{ with .Exports }}
+; Addresses of exported symbols.
+{{- range . }}
+{{ .Name }}_addr equ {{ .Addr }}
+{{- end }}
+; Exported symbols.
+{{- range . }}
+  .{{ .Name }}:
+	dd      dynstr.{{ .Name }}_off	; name: String table offset of name.
+	dd      {{ .Name }}_addr	; value: Symbol value.
+	dd      0	; size: Size of associated object.
+	db      STT_FUNC | STB_GLOBAL<<4	; info: Type and binding information.
+	db      STV_DEFAULT	; other: Symbol visibility.
+	dw      shdr._text_idx	; shndx: Section index of symbol.
+{{- end }}
+{{- end }}
+
+{{ range .Libs }}
 ; {{ .Filename }}
-	{{- range $j, $f := .Funcs }}
+	{{- range .Funcs }}
   .{{ . }}:
 	dd      dynstr.{{ . }}_off	; name: String table offset of name.
 	dd      0	; value: Symbol value.
@@ -20,17 +50,22 @@ dynsym:
 	db      STT_FUNC | STB_GLOBAL<<4	; info: Type and binding information.
 	db      STV_DEFAULT	; other: Symbol visibility.
 	dw      0	; shndx: Section index of symbol.
-{{- if and (eq $i 0) (eq $j 0) }}
-.entsize equ $ - dynsym
-{{- end }}
 	{{- end }}
 {{ end }}
-
+{{ with .Exports -}}
+; Exported symbols.
 {{- range . }}
+.{{ .Name }}_idx	equ (.{{ .Name }} - dynsym) / .entsize
+{{- end }}
+{{- end }}
+{{- range .Libs }}
 ; {{ .Filename }}
 	{{- range .Funcs }}
 .{{ . }}_idx	equ (.{{ . }} - dynsym) / .entsize
 	{{- end }}
 {{ end }}
+dynsym.size equ $ - dynsym
+dynsym.count equ dynsym.size / dynsym.entsize
+
 ; --- [/ .dynsym section ] -----------------------------------------------------
 

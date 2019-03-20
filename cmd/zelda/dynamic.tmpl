@@ -4,6 +4,7 @@
 DT_NULL   equ 0  ; Terminating entry.
 DT_NEEDED equ 1  ; String table offset of a needed shared library.
 DT_PLTGOT equ 3  ; Processor-dependent address.
+DT_HASH   equ 4  ; Address of symbol hash table.
 DT_STRTAB equ 5  ; Address of string table.
 DT_SYMTAB equ 6  ; Address of symbol table.
 DT_JMPREL equ 23 ; Address of PLT relocations.
@@ -21,7 +22,11 @@ dynamic:
 	dd      dynstr	; val: Integer/Address value.
 
 .entsize equ $ - dynamic
-
+{{ with .Exports }}
+  .hash:
+	dd      DT_HASH	; tag: Entry type.
+	dd      hash	; val: Integer/Address value.
+{{ end }}
   .symtab:
 	dd      DT_SYMTAB	; tag: Entry type.
 	dd      dynsym	; val: Integer/Address value.
@@ -34,7 +39,7 @@ dynamic:
 	dd      DT_PLTGOT	; tag: Entry type.
 	dd      got_plt	; val: Integer/Address value.
 
-{{- range . }}
+{{- range .Libs }}
 
   .{{ .Name }}:
 	dd      DT_NEEDED	; tag: Entry type.

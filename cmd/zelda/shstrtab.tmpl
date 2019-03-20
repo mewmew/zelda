@@ -1,0 +1,47 @@
+; --- [ .shstrtab section ] ----------------------------------------------------
+
+; TODO: ensure that shstrtab is not loaded into memory. If it is, place it in a
+; read-only segment.
+shstrtab_off equ {{ .PrevSeg }}_off + {{ .PrevSeg }}.size
+
+shstrtab:
+
+  .null:
+	db 0
+
+
+  .interp_off equ $ - shstrtab
+	db      ".interp", 0
+
+  .dynamic_off equ $ - shstrtab
+	db      ".dynamic", 0
+
+  .dynstr_off equ $ - shstrtab
+	db      ".dynstr", 0
+
+  .dynsym_off equ $ - shstrtab
+	db      ".dynsym", 0
+
+  .rel_plt_off equ $ - shstrtab
+	db      ".rel.plt", 0
+
+  .got_plt_off equ $ - shstrtab
+	db      ".got.plt", 0
+
+  .plt_off equ $ - shstrtab
+	db      ".plt", 0
+
+{{ range .Sects }}
+  .{{ nasmIdent .Name }}_off equ $ - shstrtab
+	db      "{{ .Name }}", 0
+{{- end }}
+
+  .shstrtab_off equ $ - shstrtab
+	db      ".shstrtab", 0
+
+shstrtab.size equ $ - shstrtab
+
+; --- [/ .shstrtab section ] ---------------------------------------------------
+
+align 0x4, db 0x00
+

@@ -1,8 +1,11 @@
 ; --- [ .rel.plt section ] -----------------------------------------------------
 
+rel_plt_off equ rel_plt - BASE_R_SEG
+
 ; Relocation types.
 R_386_JMP_SLOT equ 7 ; Set GOT entry to code address.
 
+{{ $first := true -}}
 rel_plt:
 {{ range . }}
 ; {{ .Filename }}
@@ -10,6 +13,10 @@ rel_plt:
   .{{ . }}:
 	dd      got_plt.{{ . }}	; offset: Location to be relocated.
 	dd      R_386_JMP_SLOT | dynsym.{{ . }}_idx<<8	; info: Relocation type and symbol index.
+{{- if $first }}
+rel_plt.entsize equ $ - rel_plt
+{{- $first = false -}}
+{{- end }}
 	{{- end }}
 {{ end }}
 
@@ -19,5 +26,8 @@ rel_plt:
 .{{ . }}_off	equ .{{ . }} - rel_plt
 	{{- end }}
 {{ end }}
+
+rel_plt.size equ $ - rel_plt
+
 ; --- [/ .rel.plt section ] ----------------------------------------------------
 

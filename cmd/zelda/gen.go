@@ -18,7 +18,7 @@ import (
 
 // dumpFileHdr outputs the ELF file header in NASM syntax based on the given
 // entry point address, writing to w.
-func dumpFileHdr(w io.Writer, entry Address) error {
+func dumpFileHdr(w io.Writer, entry Address, isSharedLib bool) error {
 	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
 	if err != nil {
 		return errors.WithStack(err)
@@ -30,8 +30,9 @@ func dumpFileHdr(w io.Writer, entry Address) error {
 		return errors.WithStack(err)
 	}
 	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
-	data := map[string]Address{
-		"Entry": entry,
+	data := map[string]interface{}{
+		"Entry":       entry,
+		"IsSharedLib": isSharedLib,
 	}
 	if err := t.Execute(tw, data); err != nil {
 		return errors.WithStack(err)
@@ -253,11 +254,48 @@ func dumpInterpSect(w io.Writer) error {
 	return nil
 }
 
+// --- [ .hash section ] -------------------------------------------------------
+
+// dumpHashSect outputs the .hash section in NASM syntax based on the given
+// exported symbols, writing to w.
+func dumpHashSect(w io.Writer, exports []Export) error {
+	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	const tmplName = "hash.tmpl"
+	tmplPath := filepath.Join(srcDir, tmplName)
+	t, err := template.New(tmplName).ParseFiles(tmplPath)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
+	var symbolIndices []int
+	nexports := len(exports)
+	for i := 0; i < nexports; i++ {
+		symIdx := i - 1
+		if i == 0 {
+			symIdx = 0 // STN_UNDEF
+		}
+		symbolIndices = append(symbolIndices, symIdx)
+	}
+	data := map[string]interface{}{
+		"SymbolIndices": symbolIndices,
+	}
+	if err := t.Execute(tw, data); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := tw.Flush(); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
 // --- [ .dynamic section ] ----------------------------------------------------
 
 // dumpDynamicSect outputs the .dynamic section in NASM syntax based on the
 // given imported libraries, writing to w.
-func dumpDynamicSect(w io.Writer, libs []Library) error {
+func dumpDynamicSect(w io.Writer, libs []Library, exports []Export) error {
 	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
 	if err != nil {
 		return errors.WithStack(err)
@@ -269,7 +307,11 @@ func dumpDynamicSect(w io.Writer, libs []Library) error {
 		return errors.WithStack(err)
 	}
 	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
-	if err := t.Execute(tw, libs); err != nil {
+	data := map[string]interface{}{
+		"Libs":    libs,
+		"Exports": exports,
+	}
+	if err := t.Execute(tw, data); err != nil {
 		return errors.WithStack(err)
 	}
 	if err := tw.Flush(); err != nil {
@@ -280,7 +322,7 @@ func dumpDynamicSect(w io.Writer, libs []Library) error {
 
 // dumpDynstrSect outputs the .dynstr section in NASM syntax based on the given
 // imported libraries, writing to w.
-func dumpDynstrSect(w io.Writer, libs []Library) error {
+func dumpDynstrSect(w io.Writer, libs []Library, exports []Export) error {
 	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
 	if err != nil {
 		return errors.WithStack(err)
@@ -292,7 +334,11 @@ func dumpDynstrSect(w io.Writer, libs []Library) error {
 		return errors.WithStack(err)
 	}
 	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
-	if err := t.Execute(tw, libs); err != nil {
+	data := map[string]interface{}{
+		"Libs":    libs,
+		"Exports": exports,
+	}
+	if err := t.Execute(tw, data); err != nil {
 		return errors.WithStack(err)
 	}
 	if err := tw.Flush(); err != nil {
@@ -303,7 +349,7 @@ func dumpDynstrSect(w io.Writer, libs []Library) error {
 
 // dumpDynsymSect outputs the .dynsym section in NASM syntax based on the given
 // imported libraries, writing to w.
-func dumpDynsymSect(w io.Writer, libs []Library) error {
+func dumpDynsymSect(w io.Writer, libs []Library, exports []Export) error {
 	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
 	if err != nil {
 		return errors.WithStack(err)
@@ -315,7 +361,11 @@ func dumpDynsymSect(w io.Writer, libs []Library) error {
 		return errors.WithStack(err)
 	}
 	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
-	if err := t.Execute(tw, libs); err != nil {
+	data := map[string]interface{}{
+		"Libs":    libs,
+		"Exports": exports,
+	}
+	if err := t.Execute(tw, data); err != nil {
 		return errors.WithStack(err)
 	}
 	if err := tw.Flush(); err != nil {
@@ -479,6 +529,36 @@ func dumpSect(w io.Writer, sect *Section, prevSeg string, content string) error 
 	return nil
 }
 
+// dumpShstrtabSect outputs the .shstrtab section in NASM syntax based on the
+// given sections, writing to w.
+func dumpShstrtabSect(w io.Writer, prevSeg string, sects []*Section) error {
+	funcs := template.FuncMap{
+		"nasmIdent": nasmIdent,
+	}
+	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	const tmplName = "shstrtab.tmpl"
+	tmplPath := filepath.Join(srcDir, tmplName)
+	t, err := template.New(tmplName).Funcs(funcs).ParseFiles(tmplPath)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
+	data := map[string]interface{}{
+		"PrevSeg": prevSeg,
+		"Sects":   sects,
+	}
+	if err := t.Execute(tw, data); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := tw.Flush(); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
 // dumpLibImps outputs a redirection from the given PE import entries to their
 // corresponding ELF dynamic symbols in NASM syntax, writing to w.
 func dumpLibImps(w io.Writer, lib Library) error {
@@ -498,6 +578,47 @@ func dumpLibImps(w io.Writer, lib Library) error {
 	}
 	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
 	if err := t.Execute(tw, lib); err != nil {
+		return errors.WithStack(err)
+	}
+	if err := tw.Flush(); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+// --- [ Section headers ] -----------------------------------------------------
+
+// dumpSectHdrs outputs the ELF section headers in NASM syntax based on the
+// given sections, writing to w.
+func dumpSectHdrs(w io.Writer, sects []*Section) error {
+	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	const tmplName = "shdr.tmpl"
+	tmplPath := filepath.Join(srcDir, tmplName)
+	t, err := template.New(tmplName).ParseFiles(tmplPath)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	// flags:
+	//    SHF_ALLOC | SHF_EXECINSTR
+	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
+	// Prepare data for template.
+	type ELFSection struct {
+		Name  string
+		Flags string
+	}
+	var elfSects []ELFSection
+	for _, sect := range sects {
+		flags := elfSectionFlag(sect.Perm)
+		elfSect := ELFSection{
+			Name:  nasmIdent(sect.Name),
+			Flags: SectionFlagString(flags),
+		}
+		elfSects = append(elfSects, elfSect)
+	}
+	if err := t.Execute(tw, elfSects); err != nil {
 		return errors.WithStack(err)
 	}
 	if err := tw.Flush(); err != nil {
@@ -615,7 +736,31 @@ func elfProgFlag(perm Perm) elf.ProgFlag {
 	return flags
 }
 
+// elfSectionFlag returns the section header flags based on the given memory
+// access permissions.
+func elfSectionFlag(perm Perm) elf.SectionFlag {
+	var flags elf.SectionFlag
+	flags |= elf.SHF_ALLOC
+	if perm&PermR != 0 {
+		// ELF sections are always readable.
+		// nothing to do.
+	}
+	if perm&PermW != 0 {
+		flags |= elf.SHF_WRITE
+	}
+	if perm&PermX != 0 {
+		flags |= elf.SHF_EXECINSTR
+	}
+	return flags
+}
+
 // ProgFlagString returns the string representation of the given program flags.
 func ProgFlagString(flags elf.ProgFlag) string {
+	return strings.ReplaceAll(flags.String(), "+", " | ")
+}
+
+// SectionFlagString returns the string representation of the given section
+// flags.
+func SectionFlagString(flags elf.SectionFlag) string {
 	return strings.ReplaceAll(flags.String(), "+", " | ")
 }
