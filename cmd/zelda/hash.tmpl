@@ -16,10 +16,10 @@ hash:
 	dd      dynsym.count ; nchain
 
   .buckets:
-	dd      dynsym.count-1 ; -> last entry in chain
+	dd      dynsym.count ; -> last entry in chain
 
   .chains:
-{{- range $i, $v := .SymbolIndicies }}
+{{- range $i, $v := .SymbolIndices }}
 	dd      {{ . }}	; index {{ $i }} -> index {{ $v }}
 {{- end }}
 

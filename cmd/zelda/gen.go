@@ -270,13 +270,11 @@ func dumpHashSect(w io.Writer, exports []Export) error {
 		return errors.WithStack(err)
 	}
 	tw := tabwriter.NewWriter(w, 1, 3, 1, ' ', tabwriter.TabIndent)
-	var symbolIndices []int
+	symbolIndices := []int{
+		0, // STN_UNDEF
+	}
 	nexports := len(exports)
-	for i := 0; i < nexports; i++ {
-		symIdx := i - 1
-		if i == 0 {
-			symIdx = 0 // STN_UNDEF
-		}
+	for symIdx := 0; symIdx < nexports; symIdx++ {
 		symbolIndices = append(symbolIndices, symIdx)
 	}
 	data := map[string]interface{}{
