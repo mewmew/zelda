@@ -11,6 +11,10 @@ STT_FUNC   equ 2 ; Function.
 ; Symbol visibility.
 STV_DEFAULT equ 0 ; Default visibility.
 
+; Special section indicies.
+SHN_UNDEF equ 0      ; Undefined, missing, irrelevant.
+SHN_ABS   equ 0xFFF1 ; Absolute values.
+
 dynsym_off equ $ - BASE_R_SEG
 
 dynsym:
@@ -36,7 +40,7 @@ dynsym:
 	dd      0	; size: Size of associated object.
 	db      STT_FUNC | STB_GLOBAL<<4	; info: Type and binding information.
 	db      STV_DEFAULT	; other: Symbol visibility.
-	dw      shdr._text_idx	; shndx: Section index of symbol.
+	dw      SHN_ABS	; shndx: Section index of symbol.
 {{- end }}
 {{- end }}
 
@@ -49,7 +53,7 @@ dynsym:
 	dd      0	; size: Size of associated object.
 	db      STT_FUNC | STB_GLOBAL<<4	; info: Type and binding information.
 	db      STV_DEFAULT	; other: Symbol visibility.
-	dw      0	; shndx: Section index of symbol.
+	dw      SHN_UNDEF	; shndx: Section index of symbol.
 	{{- end }}
 {{ end }}
 
