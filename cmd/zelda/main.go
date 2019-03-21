@@ -99,7 +99,7 @@ func relink(pePath string, entry Address, ints, nops AddrRanges, replaces Replac
 	// Output header of read-only segment.
 	out := &bytes.Buffer{}
 	// TODO: make base address configurable from command line.
-	const base = 0x80400000 // use 0x8XXXXXXX to prevent conflict with 0x0XXXXXXX
+	const base = 0x00300000 // use 0x003XXXXX to prevent conflict with 0x004XXXXX
 	if err := dumpRSegPre(out, base); err != nil {
 		return errors.WithStack(err)
 	}
