@@ -69,16 +69,21 @@ shdr:
 	dd      0                   ; entsize:   Size of each entry in section.
 
   .dynsym:
-	dd      shstrtab.dynsym_off ; name:      Section name (index into the section header string table).
-	dd      SHT_DYNSYM          ; type:      Section type.
-	dd      SHF_ALLOC           ; flags:     Section flags.
-	dd      dynsym              ; addr:      Address in memory image.
-	dd      dynsym_off          ; off:       Offset in file.
-	dd      dynsym.size         ; size:      Size in bytes.
-	dd      shdr.dynstr_idx     ; link:      Index of a related section.
-	dd      0                   ; info:      Depends on section type.
-	dd      0x4                 ; addralign: Alignment in bytes.
-	dd      dynsym.entsize      ; entsize:   Size of each entry in section.
+	dd      shstrtab.dynsym_off	; name:      Section name (index into the section header string table).
+	dd      SHT_DYNSYM	; type:      Section type.
+	dd      SHF_ALLOC	; flags:     Section flags.
+	dd      dynsym	; addr:      Address in memory image.
+	dd      dynsym_off	; off:       Offset in file.
+	dd      dynsym.size	; size:      Size in bytes.
+	dd      shdr.dynstr_idx	; link:      Index of a related section.
+{{- if .HasGlobal }}
+	; index of first non-local symbol.
+	dd      dynsym.null_idx+1	; info:      Depends on section type.
+{{- else }}
+	dd      0	; info:      Depends on section type.
+{{- end }}
+	dd      0x4	; addralign: Alignment in bytes.
+	dd      dynsym.entsize	; entsize:   Size of each entry in section.
 
   .rel_plt:
 	dd      shstrtab.rel_plt_off      ; name:      Section name (index into the section header string table).
@@ -118,7 +123,7 @@ plt_entsize equ 4 ; 32-bit entry.
 	dd      0x10                        ; addralign: Alignment in bytes.
 	dd      plt_entsize                 ; entsize:   Size of each entry in section.
 
-{{ range . }}
+{{ range .Sects }}
   .{{ .Name }}:
 	dd      shstrtab.{{ .Name }}_off	; name:      Section name (index into the section header string table).
 	dd      SHT_PROGBITS	; type:      Section type.
@@ -152,7 +157,7 @@ plt_entsize equ 4 ; 32-bit entry.
 .rel_plt_idx	equ (.rel_plt - shdr) / .entsize
 .got_plt_idx	equ (.got_plt - shdr) / .entsize
 .plt_idx	equ (.plt - shdr) / .entsize
-{{- range . }}
+{{- range .Sects }}
 .{{ .Name }}_idx	equ (.{{ .Name }} - shdr) / .entsize
 {{- end }}
 .shstrtab_idx	equ (.shstrtab - shdr) / .entsize

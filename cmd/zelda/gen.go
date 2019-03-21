@@ -588,7 +588,7 @@ func dumpLibImps(w io.Writer, lib Library) error {
 
 // dumpSectHdrs outputs the ELF section headers in NASM syntax based on the
 // given sections, writing to w.
-func dumpSectHdrs(w io.Writer, sects []*Section) error {
+func dumpSectHdrs(w io.Writer, sects []*Section, hasGlobal bool) error {
 	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
 	if err != nil {
 		return errors.WithStack(err)
@@ -616,7 +616,11 @@ func dumpSectHdrs(w io.Writer, sects []*Section) error {
 		}
 		elfSects = append(elfSects, elfSect)
 	}
-	if err := t.Execute(tw, elfSects); err != nil {
+	data := map[string]interface{}{
+		"Sects":     elfSects,
+		"HasGlobal": hasGlobal,
+	}
+	if err := t.Execute(tw, data); err != nil {
 		return errors.WithStack(err)
 	}
 	if err := tw.Flush(); err != nil {

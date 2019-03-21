@@ -226,7 +226,8 @@ func relink(pePath string, entry Address, ints, nops AddrRanges, replaces Replac
 	// === [/ Sections ] ===
 
 	// === [ Section headers ] ===
-	if err := dumpSectHdrs(out, sects); err != nil {
+	hasGlobal := len(exports) > 0 || len(libs) > 0
+	if err := dumpSectHdrs(out, sects, hasGlobal); err != nil {
 		return errors.WithStack(err)
 	}
 	// === [/ Section headers ] ===

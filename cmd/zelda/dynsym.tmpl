@@ -52,6 +52,8 @@ dynsym:
 	dw      0	; shndx: Section index of symbol.
 	{{- end }}
 {{ end }}
+
+.null_idx	equ (.null - dynsym) / .entsize
 {{ with .Exports -}}
 ; Exported symbols.
 {{- range . }}
