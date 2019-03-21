@@ -130,13 +130,13 @@ func relink(pePath string, entry Address, ints, nops AddrRanges, replaces Replac
 	}
 	if isSharedLib {
 		// .hash
-		if err := dumpHashSect(out, exports); err != nil {
+		nglobals := len(exports)
+		for _, lib := range libs {
+			nglobals += len(lib.Funcs)
+		}
+		if err := dumpHashSect(out, nglobals); err != nil {
 			return errors.WithStack(err)
 		}
-	}
-	// .dynamic
-	if err := dumpDynamicSect(out, libs, exports); err != nil {
-		return errors.WithStack(err)
 	}
 	// .dynstr
 	if err := dumpDynstrSect(out, libs, exports); err != nil {
@@ -159,6 +159,10 @@ func relink(pePath string, entry Address, ints, nops AddrRanges, replaces Replac
 	// ___ [ Read-write segment ] ___
 	// Output header of read-write segment.
 	if err := dumpRWSegPre(out); err != nil {
+		return errors.WithStack(err)
+	}
+	// .dynamic
+	if err := dumpDynamicSect(out, libs, exports); err != nil {
 		return errors.WithStack(err)
 	}
 	// .got.plt

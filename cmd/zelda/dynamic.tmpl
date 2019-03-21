@@ -13,7 +13,7 @@ dynamic_align equ 4
 
 align dynamic_align, db 0x00
 
-dynamic_off equ dynamic - BASE_R_SEG
+dynamic_off equ rw_seg_off + ($ - $$)
 
 dynamic:
 

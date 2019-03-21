@@ -258,7 +258,7 @@ func dumpInterpSect(w io.Writer) error {
 
 // dumpHashSect outputs the .hash section in NASM syntax based on the given
 // exported symbols, writing to w.
-func dumpHashSect(w io.Writer, exports []Export) error {
+func dumpHashSect(w io.Writer, nglobals int) error {
 	srcDir, err := goutil.SrcDir("github.com/mewmew/zelda/cmd/zelda")
 	if err != nil {
 		return errors.WithStack(err)
@@ -273,8 +273,7 @@ func dumpHashSect(w io.Writer, exports []Export) error {
 	symbolIndices := []int{
 		0, // STN_UNDEF
 	}
-	nexports := len(exports)
-	for symIdx := 0; symIdx < nexports; symIdx++ {
+	for symIdx := 0; symIdx < nglobals; symIdx++ {
 		symbolIndices = append(symbolIndices, symIdx)
 	}
 	data := map[string]interface{}{
