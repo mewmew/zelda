@@ -333,6 +333,12 @@ func parseSects(file *pe.File) []*Section {
 		data := file.Content[start:end]
 		addr := Address(file.OptHdr.ImageBase) + Address(sectHdr.RelAddr)
 		perm := parsePerm(sectHdr.Flags)
+		if sectHdr.Name == ".text" {
+			// NOTE: we make the .text segment rwx to support binary
+			// instrumentation at runtime. Viewer discression is adviced. Don't do
+			// this at home :)
+			perm |= PermW
+		}
 		sect := &Section{
 			Name: sectHdr.Name,
 			Data: data,
