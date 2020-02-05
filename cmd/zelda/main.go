@@ -88,7 +88,13 @@ func relink(pePath string, entry Address, ints, nops AddrRanges, replaces Replac
 			Name:     libName(staticLib.Filename),
 			Filename: staticLib.Filename,
 		}
+		present := make(map[string]bool)
 		for _, fn := range staticLib.Funcs {
+			if _, ok := present[fn.Name]; ok {
+				// skip duplicate function names
+				continue
+			}
+			present[fn.Name] = true
 			lib.Funcs = append(lib.Funcs, fn.Name)
 		}
 		libs = append(libs, lib)
@@ -247,13 +253,14 @@ func getStaticLibsPrinter(staticLibs []StaticLib) (func(w io.Writer, addr Addres
 			for _, fn := range staticLib.Funcs {
 				const injectSize = 5
 				if fn.Addr == addr {
-					if _, err := fmt.Fprintf(w, "  .%s:\n", fn.Name); err != nil {
+					staticFuncName := fmt.Sprintf("%s_%08x", fn.Name, uint64(addr))
+					if _, err := fmt.Fprintf(w, "  .%s:\n", staticFuncName); err != nil {
 						return 0, errors.WithStack(err)
 					}
 					if _, err := fmt.Fprintf(w, "\tjmp     plt.%s\n", fn.Name); err != nil {
 						return 0, errors.WithStack(err)
 					}
-					if _, err := fmt.Fprintf(w, "  times (%d - ($ - .%s)) int3\n", injectSize, fn.Name); err != nil {
+					if _, err := fmt.Fprintf(w, "  times (%d - ($ - .%s)) int3\n", injectSize, staticFuncName); err != nil {
 						return 0, errors.WithStack(err)
 					}
 					return injectSize, nil
